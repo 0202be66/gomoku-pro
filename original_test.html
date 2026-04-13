@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head><style>body{margin:20px}</style></head>
+<body>
+<h3>Testing ORIGINAL drawBoard logic exactly as it was:</h3>
+<canvas id="board" width="600" height="600"></canvas>
+<script>
+const canvas = document.getElementById('board');
+const ctx = canvas.getContext('2d');
+
+const size = 15;
+const cellSize = 40;
+
+// ORIGINAL code (from your first upload)
+function drawBoard_original() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    ctx.strokeStyle = 'rgba(44, 62, 80, 0.7)';
+    ctx.lineWidth = 1;
+    
+    for (let i = 0; i < size; i++) {
+        ctx.beginPath();
+        ctx.moveTo(cellSize/2, i * cellSize + cellSize/2);
+        ctx.lineTo(600 - cellSize/2, i * cellSize + cellSize/2);
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.moveTo(i * cellSize + cellSize/2, cellSize/2);
+        ctx.lineTo(i * cellSize + cellSize/2, 600 - cellSize/2);
+        ctx.stroke();
+    }
+    
+    const stars = [[3,3], [11,3], [3,11], [11,11], [7,7]];
+    ctx.fillStyle = 'rgba(44, 62, 80, 0.9)';
+    stars.forEach(([r,c]) => {
+        ctx.beginPath(); 
+        ctx.arc(c * cellSize + cellSize/2, r * cellSize + cellSize/2, 4, 0, Math.PI*2); 
+        ctx.fill();
+    });
+}
+
+drawBoard_original();
+console.log('Original drawBoard executed');
+
+// Check what positions are being drawn
+console.log('cellSize/2 =', cellSize/2);
+console.log('600 - cellSize/2 =', 600 - cellSize/2);
+for(let i=0; i<15; i++) {
+    console.log('i='+i+': hori: y=' + (i*cellSize+cellSize/2) + 
+                ', vert: x=' + (i*cellSize+cellSize/2));
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,125 @@
+:root {
+    --primary-color: #2c3e50;
+    --accent-color: #3498db;
+    /* 顶级榧木色调：温润、微黄、极具高级感 */
+    --kaya-wood: #f1c47f; 
+    --kaya-dark: #d4a76a;
+    --line-color: rgba(44, 62, 80, 0.8);
+    --bg-gradient: radial-gradient(circle at center, #ffffff 0%, #dcdde1 100%);
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: var(--bg-gradient);
+    font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+.app-container {
+    width: 95%;
+    max-width: 1100px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 30px;
+    border-radius: 24px;
+    box-shadow: 0 50px 100px rgba(0,0,0,0.15);
+    backdrop-filter: blur(10px);
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    border-bottom: 2px solid #f0f2f5;
+    padding-bottom: 20px;
+}
+
+.brand h1 { margin: 0; font-size: 1.8rem; letter-spacing: 2px; color: #1a1a1a; }
+.version-tag { 
+    background: linear-gradient(45deg, #e74c3c, #c0392b); 
+    color: white; padding: 2px 10px; border-radius: 20px;
+    font-size: 0.75rem; margin-left: 10px; vertical-align: middle;
+    box-shadow: 0 2px 5px rgba(231, 76, 60, 0.3);
+}
+
+main { display: flex; gap: 50px; align-items: flex-start; }
+
+/* 棋盘立体化设计 */
+.board-area { flex: 1; display: flex; flex-direction: column; align-items: center; }
+.status-bar { 
+    font-size: 1.2rem; font-weight: 600; margin-bottom: 20px; 
+    color: #444; text-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.board-wrapper {
+    position: relative;
+    /* 模拟实木板侧边厚度 */
+    background: #c19a6b; 
+    padding: 2px;
+    border-radius: 6px;
+    box-shadow: 
+        0 5px 15px rgba(0,0,0,0.3),
+        0 20px 50px rgba(0,0,0,0.2),
+        inset 0 0 100px rgba(0,0,0,0.1);
+}
+
+#board { 
+    /* 仅在底层棋盘画布应用木纹背景 */
+    background: var(--kaya-wood);
+    background-image: 
+        repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(212, 167, 106, 0.1) 41px),
+        repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(212, 167, 106, 0.1) 41px);
+    display: block;
+    border: 1px solid rgba(0,0,0,0.1);
+    border-radius: 4px;
+}
+
+#effects { 
+    position: absolute; 
+    top: 2px; 
+    left: 2px; 
+    pointer-events: none; 
+    background: transparent; /* 确保顶层画布透明 */
+}
+
+/* 侧边栏与控件美化 */
+.sidebar { width: 280px; display: flex; flex-direction: column; gap: 20px; }
+
+section { 
+    background: #ffffff; padding: 20px; border-radius: 16px; 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+    border: 1px solid #f0f0f0;
+}
+
+h3 { 
+    margin: 0 0 15px 0; font-size: 0.95rem; color: #1a1a1a; 
+    text-transform: uppercase; letter-spacing: 1px;
+    display: flex; align-items: center; gap: 8px;
+}
+h3::before { content: ''; width: 4px; height: 16px; background: var(--accent-color); border-radius: 2px; }
+
+.power-meter { 
+    background: #fafbfc; padding: 15px; border-radius: 12px; margin-top: 10px;
+}
+.meter-bar { height: 8px; background: #eef2f7; border-radius: 4px; overflow: hidden; margin-bottom: 10px; }
+#power-fill { 
+    height: 100%; background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%); 
+    box-shadow: 0 0 10px rgba(79, 172, 254, 0.5);
+}
+
+.btn { 
+    width: 100%; padding: 14px; border: none; border-radius: 12px; 
+    font-weight: 700; cursor: pointer; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    font-size: 1rem; color: white; margin-bottom: 10px;
+}
+.primary { background: linear-gradient(135deg, #3498db, #2980b9); box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3); }
+.secondary { background: #f1f2f6; color: #57606f; border: 1px solid #dfe4ea; }
+.btn:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+.btn:active { transform: translateY(0); }
+
+.toggle-group { margin-top: 10px; border-top: 1px solid #f0f0f0; padding-top: 15px; }
+.toggle-group label { margin-bottom: 10px; font-size: 0.85rem; color: #666; font-weight: 500; }
+input[type="checkbox"] { accent-color: var(--accent-color); width: 16px; height: 16px; }

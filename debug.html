@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+body { margin: 20px; }
+canvas { border: 1px solid red; }
+</style>
+</head>
+<body>
+<h3>If you see 15x15 grid lines + red dots at star positions + black stone at center, canvas is working.</h3>
+<canvas id="board" width="600" height="600"></canvas>
+<script>
+const canvas = document.getElementById('board');
+const ctx = canvas.getContext('2d');
+
+const size = 15;
+const cellSize = 40;
+const padding = cellSize/2;
+
+console.log('Canvas size:', canvas.width, canvas.height);
+console.log('Cell size:', cellSize, 'Padding:', padding);
+
+// Fill background
+ctx.fillStyle = '#f1c47f';
+ctx.fillRect(0, 0, 600, 600);
+
+// Grid
+ctx.strokeStyle = '#333';
+ctx.lineWidth = 1.5;
+for(let i=0; i<size; i++) {
+    const pos = padding + i * cellSize;
+    console.log('Line', i, 'at', pos);
+    ctx.beginPath();
+    ctx.moveTo(padding, pos);
+    ctx.lineTo(600-padding, pos);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(pos, padding);
+    ctx.lineTo(pos, 600-padding);
+    ctx.stroke();
+}
+
+// Star points
+ctx.fillStyle = 'red';
+const stars = [[3,3],[11,3],[3,11],[11,11],[7,7]];
+stars.forEach(([r,c]) => {
+    const x = padding + c * cellSize;
+    const y = padding + r * cellSize;
+    ctx.beginPath();
+    ctx.arc(x, y, 5, 0, Math.PI*2);
+    ctx.fill();
+    console.log('Star at', r, c, '->', x, y);
+});
+
+// Center stone
+const cx = padding + 7 * cellSize;
+const cy = padding + 7 * cellSize;
+ctx.beginPath();
+ctx.arc(cx, cy, 17, 0, Math.PI*2);
+ctx.fillStyle = 'black';
+ctx.fill();
+console.log('Center stone at', cx, cy);
+</script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>五子棋卓越版 - 专业博弈系统</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <div class="brand">
+                <h1>五子棋<span class="version-tag">卓越版</span></h1>
+            </div>
+            <div class="game-info">
+                <div class="player-card black active" id="p1-card">
+                    <span class="stone-icon"></span>
+                    <span class="name">黑子 (您)</span>
+                </div>
+                <div class="vs-divider">VS</div>
+                <div class="player-card white" id="p2-card">
+                    <span class="stone-icon"></span>
+                    <span class="name" id="p2-name">白子 (AI)</span>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <div class="board-area">
+                <div class="status-bar" id="status">系统准备就绪...</div>
+                <div class="board-wrapper">
+                    <canvas id="board" width="600" height="600"></canvas>
+                    <canvas id="effects" width="600" height="600"></canvas>
+                </div>
+            </div>
+            
+            <aside class="sidebar">
+                <section class="config-panel">
+                    <h3>核心配置</h3>
+                    <div class="input-group">
+                        <label>对战模式</label>
+                        <select id="mode-select">
+                            <option value="pvp">双人对战</option>
+                            <option value="pve" selected>人机挑战 (AI)</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>AI 难度 (Minimax 深度)</label>
+                        <select id="difficulty-select">
+                            <option value="1">入门 (1步预测)</option>
+                            <option value="2">普通 (2步预测)</option>
+                            <option value="3" selected>专家 (3步预测)</option>
+                            <option value="4">棋魂 (4步预测-慎选)</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="renju-toggle"> 开启连珠禁手 (黑棋限制)
+                        </label>
+                    </div>
+                </section>
+
+                <section class="power-panel">
+                    <h3>棋力评估</h3>
+                    <div class="power-meter">
+                        <div class="meter-bar"><div id="power-fill" style="width: 20%"></div></div>
+                        <div class="power-label">等级: <span id="rank-name">棋坛新手</span></div>
+                        <div class="power-value">ELO: <span id="elo-score">1000</span></div>
+                    </div>
+                </section>
+
+                <section class="action-panel">
+                    <button id="undo-btn" class="btn secondary">悔棋</button>
+                    <button id="restart-btn" class="btn primary">重开新局</button>
+                    <div class="toggle-group">
+                        <label><input type="checkbox" id="sound-toggle" checked> 启用落子音效</label>
+                        <label><input type="checkbox" id="particle-toggle" checked> 启用获胜特效</label>
+                    </div>
+                </section>
+
+                <div class="stats-footer">
+                    <span>步数: <b id="move-count">0</b></span>
+                    <span>用时: <b id="timer">00:00</b></span>
+                </div>
+            </aside>
+        </main>
+    </div>
+    <!-- 引入核心逻辑 -->
+    <script src="ai.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
