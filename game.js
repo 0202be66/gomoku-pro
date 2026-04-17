@@ -26,7 +26,22 @@ let animatingStone = null; // 正在播放动画的棋子
 // ... (此处保持 ELO 相关代码不变)
 
 // 1. 初始化
-// ...
+function init() {
+    board = Array.from({ length: size }, () => Array(size).fill(0));
+    history = [];
+    currentPlayer = 1;
+    gameOver = false;
+    lastMove = null;
+    animatingStone = null;
+    particles = [];
+    eCtx.clearRect(0, 0, 600, 600);
+    stopTimer();
+    seconds = 0;
+    document.getElementById('timer').innerText = '00:00';
+    updateUI();
+    render();
+    startTimer();
+}
 
 // 2. 核心渲染逻辑
 function render() {
@@ -36,7 +51,36 @@ function render() {
 }
 
 function drawBoard() {
-    // ... (保持 drawBoard 不变)
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 绘制网格线
+    ctx.strokeStyle = 'rgba(44, 62, 80, 0.7)';
+    ctx.lineWidth = 1;
+
+    // 横线
+    for (let i = 0; i < size; i++) {
+        ctx.beginPath();
+        ctx.moveTo(padding, i * cellSize + padding);
+        ctx.lineTo(gridExtent, i * cellSize + padding);
+        ctx.stroke();
+    }
+
+    // 竖线
+    for (let i = 0; i < size; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * cellSize + padding, padding);
+        ctx.lineTo(i * cellSize + padding, gridExtent);
+        ctx.stroke();
+    }
+
+    // 绘制星位（天元和四个角星）
+    const stars = [[3, 3], [11, 3], [3, 11], [11, 11], [7, 7]];
+    ctx.fillStyle = 'rgba(44, 62, 80, 0.9)';
+    stars.forEach(([r, c]) => {
+        ctx.beginPath();
+        ctx.arc(c * cellSize + padding, r * cellSize + padding, 4, 0, Math.PI * 2);
+        ctx.fill();
+    });
 }
 
 function drawPieces() {
@@ -329,12 +373,12 @@ function handleWin(winner, line, reason = null) {
         ctx.strokeStyle = '#e74c3c'; ctx.lineWidth = 5;
         ctx.beginPath();
         const start = line[0], end = line[line.length-1];
-        ctx.moveTo(start.c*cellSize+cellSize/2, start.r*cellSize+cellSize/2);
-        ctx.lineTo(end.c*cellSize+cellSize/2, end.r*cellSize+cellSize/2);
+        ctx.moveTo(start.c*cellSize+padding, start.r*cellSize+padding);
+        ctx.lineTo(end.c*cellSize+padding, end.r*cellSize+padding);
         ctx.stroke();
 
         if (document.getElementById('particle-toggle').checked) {
-            line.forEach(p => createParticles(p.c*cellSize+cellSize/2, p.r*cellSize+cellSize/2, winner===1?'#000':'#fff'));
+            line.forEach(p => createParticles(p.c*cellSize+padding, p.r*cellSize+padding, winner===1?'#000':'#fff'));
         }
     }
 
