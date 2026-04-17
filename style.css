@@ -75,6 +75,18 @@ main { display: flex; gap: 50px; align-items: flex-start; }
     display: none;
 }
 
+.replay-entry {
+    width: min(100%, 604px);
+    margin-top: 14px;
+    display: flex;
+    justify-content: center;
+}
+
+.replay-entry.hidden,
+.replay-panel.hidden {
+    display: none;
+}
+
 .restore-copy {
     display: grid;
     gap: 4px;
@@ -137,6 +149,24 @@ main { display: flex; gap: 50px; align-items: flex-start; }
 
 .autosave-actions .btn.compact {
     flex: 1;
+}
+
+.replay-meta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.replay-detail {
+    min-height: 66px;
+}
+
+.replay-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin: 14px 0;
 }
 
 .board-wrapper {
@@ -275,6 +305,11 @@ h3::before { content: ''; width: 4px; height: 16px; background: var(--accent-col
     line-height: 1.45;
 }
 
+.record-panel .btn.compact {
+    width: 100%;
+    margin-top: 14px;
+}
+
 .btn { 
     width: 100%; padding: 14px; border: none; border-radius: 12px; 
     font-weight: 700; cursor: pointer; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -374,6 +409,11 @@ input[type="checkbox"] { accent-color: var(--accent-color); width: 16px; height:
     }
 
     .record-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .replay-meta,
+    .replay-actions {
         grid-template-columns: 1fr;
     }
 

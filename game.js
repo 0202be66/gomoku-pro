@@ -30,6 +30,19 @@ const elements = {
     recordTotal: document.getElementById('record-total'),
     recordWinRate: document.getElementById('record-win-rate'),
     recordLatest: document.getElementById('record-latest'),
+    recordReplayBtn: document.getElementById('record-replay-btn'),
+    replayEntry: document.getElementById('replay-entry'),
+    enterReplayBtn: document.getElementById('enter-replay-btn'),
+    replayPanel: document.getElementById('replay-panel'),
+    replayStep: document.getElementById('replay-step'),
+    replayTurn: document.getElementById('replay-turn'),
+    replayDetail: document.getElementById('replay-detail'),
+    replayStartBtn: document.getElementById('replay-start-btn'),
+    replayPrevBtn: document.getElementById('replay-prev-btn'),
+    replayNextBtn: document.getElementById('replay-next-btn'),
+    replayEndBtn: document.getElementById('replay-end-btn'),
+    replayPlayBtn: document.getElementById('replay-play-btn'),
+    exitReplayBtn: document.getElementById('exit-replay-btn'),
     restoreBanner: document.getElementById('restore-banner'),
     restoreText: document.getElementById('restore-text'),
     restoreResumeBtn: document.getElementById('restore-resume-btn'),
@@ -82,6 +95,12 @@ let transientStatusText = '';
 let suppressClickUntil = 0;
 let aiSearchTask = null;
 let pendingRestoreGame = null;
+let replayMode = false;
+let replayIndex = 0;
+let replaySource = null;
+let replayPlaybackTimer = null;
+let replayAutoplay = false;
+let lastFinishedRecord = null;
 
 buildBoardLayer();
 
@@ -242,6 +261,10 @@ function clearAutosave() {
     updateAutosavePanel();
 }
 
+function cloneHistory(historyItems) {
+    return historyItems.map((move) => ({ ...move }));
+}
+
 function buildAutosaveSnapshot() {
     return {
         saveVersion: AUTOSAVE_VERSION,
@@ -347,6 +370,9 @@ function formatDuration(totalSeconds) {
 
 function saveMatchRecord({ result, winner = null, reason = '', playerWon = null }) {
     const aiPlayer = getAiPlayer();
+    const winningLine = result === 'win' && history.length > 0
+        ? checkWin(history[history.length - 1].r, history[history.length - 1].c, winner)
+        : null;
     const record = {
         playedAt: new Date().toISOString(),
         mode,
@@ -359,7 +385,9 @@ function saveMatchRecord({ result, winner = null, reason = '', playerWon = null 
         winner,
         reason,
         aiPlayer,
-        playerWon
+        playerWon,
+        moveHistory: cloneHistory(history),
+        winningLine: winningLine ? winningLine.map((point) => ({ ...point })) : null
     };
 
     matchRecords.unshift(record);
@@ -367,6 +395,8 @@ function saveMatchRecord({ result, winner = null, reason = '', playerWon = null 
         matchRecords = matchRecords.slice(0, MAX_MATCH_RECORDS);
     }
     persistMatchRecords();
+    lastFinishedRecord = record;
+    return record;
 }
 
 function describeRecord(record) {
@@ -404,6 +434,7 @@ function renderMatchRecordSummary() {
     }
 
     elements.recordLatest.innerText = describeRecord(matchRecords[0]);
+    elements.recordReplayBtn.disabled = matchRecords.length === 0 || !Array.isArray(matchRecords[0].moveHistory) || matchRecords[0].moveHistory.length === 0;
 }
 
 function buildBoardLayer() {
@@ -455,6 +486,181 @@ function clearPendingActions() {
         aiSearchTask.cancel();
         aiSearchTask = null;
     }
+    if (replayPlaybackTimer !== null) {
+        clearTimeout(replayPlaybackTimer);
+        replayPlaybackTimer = null;
+    }
+}
+
+function getReplayHistory() {
+    if (replaySource && Array.isArray(replaySource.moveHistory)) {
+        return replaySource.moveHistory;
+    }
+    return cloneHistory(history);
+}
+
+function stopReplayAutoplay() {
+    replayAutoplay = false;
+    if (replayPlaybackTimer !== null) {
+        clearTimeout(replayPlaybackTimer);
+        replayPlaybackTimer = null;
+    }
+    if (elements.replayPlayBtn) {
+        elements.replayPlayBtn.innerText = '自动播放';
+    }
+}
+
+function getReplayWinningLine() {
+    if (replaySource && Array.isArray(replaySource.winningLine) && replaySource.winningLine.length > 0) {
+        return replaySource.winningLine;
+    }
+    const replayHistory = getReplayHistory();
+    if (replayHistory.length === 0) {
+        return null;
+    }
+    const last = replayHistory[replayHistory.length - 1];
+    return checkWin(last.r, last.c, last.p);
+}
+
+function drawReplayWinningLine(line) {
+    if (!Array.isArray(line) || line.length === 0) {
+        return;
+    }
+    ctx.save();
+    ctx.strokeStyle = '#e74c3c';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    const start = line[0];
+    const end = line[line.length - 1];
+    ctx.moveTo(start.c * cellSize + padding, start.r * cellSize + padding);
+    ctx.lineTo(end.c * cellSize + padding, end.r * cellSize + padding);
+    ctx.stroke();
+    ctx.restore();
+}
+
+function applyReplayPosition(index) {
+    const replayHistory = getReplayHistory();
+    replayIndex = Math.max(0, Math.min(index, replayHistory.length));
+    board = Array.from({ length: size }, () => Array(size).fill(0));
+
+    for (let i = 0; i < replayIndex; i++) {
+        const move = replayHistory[i];
+        board[move.r][move.c] = move.p;
+    }
+
+    lastMove = replayIndex > 0 ? { ...replayHistory[replayIndex - 1] } : null;
+    render();
+    if (replayIndex === replayHistory.length) {
+        drawReplayWinningLine(getReplayWinningLine());
+    }
+    updateReplayPanel();
+}
+
+function getReplayCurrentPlayer(replayHistory, stepIndex) {
+    if (stepIndex === 0) {
+        return 1;
+    }
+    const latestMove = replayHistory[stepIndex - 1];
+    return latestMove.p === 1 ? 2 : 1;
+}
+
+function updateReplayPanel() {
+    const replayHistory = getReplayHistory();
+    const totalSteps = replayHistory.length;
+    elements.replayStep.innerText = `${replayIndex} / ${totalSteps}`;
+
+    if (replayIndex === 0) {
+        elements.replayTurn.innerText = '开局';
+        elements.replayDetail.innerText = '当前为开局视图，棋盘尚未落子。';
+    } else {
+        const move = replayHistory[replayIndex - 1];
+        const nextPlayer = getReplayCurrentPlayer(replayHistory, replayIndex);
+        elements.replayTurn.innerText = `${getPieceLabel(move.p)} 第 ${replayIndex} 手`;
+        elements.replayDetail.innerText = `落点：(${move.r}, ${move.c})，执子：${getPieceLabel(move.p)}。下一手轮到 ${getPieceLabel(nextPlayer)}。`;
+        if (replayIndex === totalSteps && replaySource) {
+            if (replaySource.result === 'draw') {
+                elements.replayDetail.innerText += ' 终局结果：平局。';
+            } else if (replaySource.result === 'forbidden') {
+                elements.replayDetail.innerText += ` 终局结果：${replaySource.reason || '禁手负'}。`;
+            } else if (replaySource.result === 'win') {
+                elements.replayDetail.innerText += ` 终局结果：${describeRecord(replaySource)}。`;
+            }
+        }
+    }
+
+    elements.replayStartBtn.disabled = replayIndex === 0;
+    elements.replayPrevBtn.disabled = replayIndex === 0;
+    elements.replayNextBtn.disabled = replayIndex === totalSteps;
+    elements.replayEndBtn.disabled = replayIndex === totalSteps;
+    elements.replayPlayBtn.disabled = totalSteps === 0;
+    elements.replayPlayBtn.innerText = replayAutoplay ? '暂停播放' : '自动播放';
+}
+
+function stepReplayAutoplay() {
+    const replayHistory = getReplayHistory();
+    if (!replayAutoplay || replayIndex >= replayHistory.length) {
+        stopReplayAutoplay();
+        return;
+    }
+    applyReplayPosition(replayIndex + 1);
+    replayPlaybackTimer = setTimeout(stepReplayAutoplay, 420);
+}
+
+function toggleReplayAutoplay() {
+    const replayHistory = getReplayHistory();
+    if (replayHistory.length === 0) {
+        return;
+    }
+    if (replayAutoplay) {
+        stopReplayAutoplay();
+        return;
+    }
+    if (replayIndex >= replayHistory.length) {
+        applyReplayPosition(0);
+    }
+    replayAutoplay = true;
+    elements.replayPlayBtn.innerText = '暂停播放';
+    stepReplayAutoplay();
+}
+
+function enterReplay(source = null) {
+    const effectiveSource = source || lastFinishedRecord;
+    const replayHistory = effectiveSource && Array.isArray(effectiveSource.moveHistory) ? effectiveSource.moveHistory : history;
+    if (!Array.isArray(replayHistory) || replayHistory.length === 0) {
+        setTransientStatus('当前没有可复盘的对局。');
+        return;
+    }
+
+    clearPendingActions();
+    clearTransientStatus();
+    stopReplayAutoplay();
+    stopTimer();
+    replayMode = true;
+    replaySource = effectiveSource;
+    elements.replayEntry.classList.add('hidden');
+    elements.replayPanel.classList.remove('hidden');
+    elements.restoreBanner.classList.add('hidden');
+    applyReplayPosition(replayHistory.length);
+    elements.status.innerText = '已进入复盘模式。';
+}
+
+function exitReplay() {
+    stopReplayAutoplay();
+    replayMode = false;
+    replayIndex = 0;
+    replaySource = null;
+    elements.replayPanel.classList.add('hidden');
+    elements.replayEntry.classList.add('hidden');
+    rebuildBoardFromHistory();
+    updateUI();
+    render();
+    if (!gameOver) {
+        startTimer();
+        if (mode === 'pve' && isAiTurn()) {
+            queueAiTurn();
+        }
+    }
+    setTransientStatus('已退出复盘，返回当前对局。', 1600);
 }
 
 function clearTransientStatus() {
@@ -539,6 +745,9 @@ function isAiTurn(player = currentPlayer) {
 function init(reason = 'boot') {
     clearPendingActions();
     clearTransientStatus();
+    replayMode = false;
+    replayIndex = 0;
+    replaySource = null;
     board = Array.from({ length: size }, () => Array(size).fill(0));
     history = [];
     currentPlayer = 1;
@@ -551,6 +760,8 @@ function init(reason = 'boot') {
     stopTimer();
     seconds = 0;
     elements.timer.innerText = '00:00';
+    elements.replayEntry.classList.add('hidden');
+    elements.replayPanel.classList.add('hidden');
     updateUI();
     render();
     const restorableGame = reason === 'boot' ? loadAutosave() : null;
@@ -572,7 +783,9 @@ function init(reason = 'boot') {
 function render() {
     drawBoard();
     drawPieces();
-    drawHoverStone();
+    if (!replayMode) {
+        drawHoverStone();
+    }
     if (lastMove) highlightLastMove();
 }
 
@@ -1087,6 +1300,7 @@ function handleWin(winner, line, reason = null) {
     clearTransientStatus();
     clearAutosave();
     hideRestoreBanner();
+    elements.replayEntry.classList.remove('hidden');
     const statusText = getResultStatusMessage(winner, reason);
     elements.status.innerText = statusText;
 
@@ -1121,6 +1335,7 @@ function handleDraw() {
     clearTransientStatus();
     clearAutosave();
     hideRestoreBanner();
+    elements.replayEntry.classList.remove('hidden');
     elements.status.innerText = getDrawStatusMessage();
     saveMatchRecord({
         result: 'draw'
@@ -1141,6 +1356,9 @@ function updateStatusText() {
 }
 
 function getBlockedInputReason(cell) {
+    if (replayMode) {
+        return '当前处于复盘模式，请先退出复盘。';
+    }
     if (gameOver) {
         return '对局已结束，请重开或悔棋。';
     }
@@ -1203,6 +1421,9 @@ function updateUI() {
     renderMatchRecordSummary();
     updateStatusText();
     updateAutosavePanel();
+    if (!replayMode) {
+        elements.replayPanel.classList.add('hidden');
+    }
 }
 
 function startTimer() {
@@ -1312,6 +1533,14 @@ elements.restoreDiscardBtn.addEventListener('click', () => {
 
 elements.autosaveSaveBtn.addEventListener('click', handleManualSave);
 elements.autosaveClearBtn.addEventListener('click', handleClearAutosave);
+elements.enterReplayBtn.addEventListener('click', () => enterReplay());
+elements.recordReplayBtn.addEventListener('click', () => enterReplay(matchRecords[0] || null));
+elements.replayStartBtn.addEventListener('click', () => applyReplayPosition(0));
+elements.replayPrevBtn.addEventListener('click', () => applyReplayPosition(replayIndex - 1));
+elements.replayNextBtn.addEventListener('click', () => applyReplayPosition(replayIndex + 1));
+elements.replayEndBtn.addEventListener('click', () => applyReplayPosition(getReplayHistory().length));
+elements.replayPlayBtn.addEventListener('click', toggleReplayAutoplay);
+elements.exitReplayBtn.addEventListener('click', exitReplay);
 
 elements.restartBtn.addEventListener('click', () => {
     clearAutosave();
