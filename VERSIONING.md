@@ -5,7 +5,7 @@
 ## 当前基线
 
 - 当前发布标签: `v1.0.2`
-- 当前开发基线: `v1.0.2`
+- 当前开发基线: `c8eea18` `feat: improve autosave controls and status`
 - 当前稳定回滚标签: `v1.0.0-stable-20260417`
 
 ## 提交规范
