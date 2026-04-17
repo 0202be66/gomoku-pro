@@ -11,6 +11,7 @@ const elements = {
     status: document.getElementById('status'),
     timer: document.getElementById('timer'),
     p1Card: document.getElementById('p1-card'),
+    p1Name: document.querySelector('#p1-card .name'),
     p2Card: document.getElementById('p2-card'),
     p2Name: document.getElementById('p2-name'),
     moveCount: document.getElementById('move-count'),
@@ -18,6 +19,7 @@ const elements = {
     restartBtn: document.getElementById('restart-btn'),
     modeSelect: document.getElementById('mode-select'),
     difficultySelect: document.getElementById('difficulty-select'),
+    firstPlayerSelect: document.getElementById('first-player-select'),
     renjuToggle: document.getElementById('renju-toggle'),
     soundToggle: document.getElementById('sound-toggle'),
     particleToggle: document.getElementById('particle-toggle'),
@@ -44,6 +46,7 @@ let currentPlayer = 1; // 1: 黑, 2: 白
 let gameOver = false;
 let mode = elements.modeSelect.value;
 let difficulty = parseInt(elements.difficultySelect.value, 10);
+let firstPlayer = elements.firstPlayerSelect.value;
 let lastMove = null;
 let hoveredCell = null;
 let timerInterval = null;
@@ -129,6 +132,18 @@ function clearEffects() {
     eCtx.clearRect(0, 0, effectCanvas.width, effectCanvas.height);
 }
 
+function getAiPlayer() {
+    if (mode !== 'pve') {
+        return null;
+    }
+    return firstPlayer === 'ai' ? 1 : 2;
+}
+
+function isAiTurn(player = currentPlayer) {
+    const aiPlayer = getAiPlayer();
+    return aiPlayer !== null && player === aiPlayer;
+}
+
 // 1. 初始化
 function init() {
     clearPendingActions();
@@ -147,6 +162,9 @@ function init() {
     updateUI();
     render();
     startTimer();
+    if (isAiTurn()) {
+        queueAiTurn();
+    }
 }
 
 // 2. 核心渲染逻辑
@@ -340,6 +358,11 @@ function rebuildBoardFromHistory() {
 }
 
 function queueAiTurn() {
+    const aiPlayer = getAiPlayer();
+    if (aiPlayer === null) {
+        return;
+    }
+
     aiThinking = true;
     updateUI();
 
@@ -347,10 +370,12 @@ function queueAiTurn() {
         aiTurnTimeout = null;
         let move = null;
         try {
-            move = AI.findBestMove(board, difficulty, 2);
+            move = AI.findBestMove(board, difficulty, aiPlayer);
         } catch (error) {
             console.error('AI move failed, falling back to first candidate.', error);
-            move = typeof AI.getCandidates === 'function' ? AI.getCandidates(board, 2, 1)[0] : null;
+            move = typeof AI.getCandidates === 'function'
+                ? AI.getCandidates(board, aiPlayer, aiPlayer === 1 ? 2 : 1)[0]
+                : null;
         }
         aiThinking = false;
 
@@ -385,7 +410,7 @@ function finishTurn(r, c, player) {
         resultTimeout = null;
         currentPlayer = nextPlayer;
         updateUI();
-        if (mode === 'pve' && currentPlayer === 2 && !gameOver) {
+        if (mode === 'pve' && isAiTurn() && !gameOver) {
             queueAiTurn();
         }
     }, 200);
@@ -647,7 +672,9 @@ function handleWin(winner, line, reason = null) {
     elements.status.innerText = statusText;
 
     if (mode === 'pve') {
-        const eloGain = winner === 1 ? difficulty * 20 : -15;
+        const aiPlayer = getAiPlayer();
+        const playerWon = aiPlayer !== null && winner !== aiPlayer;
+        const eloGain = playerWon ? difficulty * 20 : -15;
         elo = Math.max(800, elo + eloGain);
         persistElo();
     }
@@ -676,7 +703,7 @@ function updateStatusText() {
     }
 
     const side = currentPlayer === 1 ? '黑子' : '白子';
-    const aiLabel = mode === 'pve' && currentPlayer === 2 ? ' (AI)' : '';
+    const aiLabel = mode === 'pve' && isAiTurn() ? ' (AI)' : '';
     const renjuHint = elements.renjuToggle.checked && currentPlayer === 1 ? '，黑棋禁手生效' : '';
     elements.status.innerText = `${side}${aiLabel}回合${renjuHint}`;
 }
@@ -684,7 +711,16 @@ function updateStatusText() {
 function updateUI() {
     elements.p1Card.classList.toggle('active', currentPlayer === 1 && !gameOver);
     elements.p2Card.classList.toggle('active', currentPlayer === 2 && !gameOver);
-    elements.p2Name.innerText = mode === 'pve' ? '白子 (AI)' : '白子 (玩家 2)';
+    const aiPlayer = getAiPlayer();
+    if (mode === 'pve') {
+        elements.p1Name.innerText = aiPlayer === 1 ? '黑子 (AI)' : '黑子 (您)';
+        elements.p2Name.innerText = aiPlayer === 2 ? '白子 (AI)' : '白子 (您)';
+        elements.firstPlayerSelect.disabled = false;
+    } else {
+        elements.p1Name.innerText = '黑子 (玩家 1)';
+        elements.p2Name.innerText = '白子 (玩家 2)';
+        elements.firstPlayerSelect.disabled = true;
+    }
     elements.moveCount.innerText = history.length;
     elements.eloScore.innerText = elo;
 
@@ -713,7 +749,7 @@ function stopTimer() {
 
 // 7. 事件
 canvas.addEventListener('pointerdown', (event) => {
-    if (aiThinking || (mode === 'pve' && currentPlayer === 2)) {
+    if (aiThinking || (mode === 'pve' && isAiTurn())) {
         return;
     }
 
@@ -727,7 +763,7 @@ canvas.addEventListener('pointermove', (event) => {
     if (event.pointerType && event.pointerType !== 'mouse') {
         return;
     }
-    if (gameOver || aiThinking || animatingStone || (mode === 'pve' && currentPlayer === 2)) {
+    if (gameOver || aiThinking || animatingStone || (mode === 'pve' && isAiTurn())) {
         if (hoveredCell) {
             hoveredCell = null;
             render();
@@ -773,6 +809,9 @@ elements.undoBtn.addEventListener('click', () => {
     updateUI();
     render();
     startTimer();
+    if (mode === 'pve' && isAiTurn()) {
+        queueAiTurn();
+    }
 });
 
 elements.restartBtn.addEventListener('click', init);
@@ -782,6 +821,10 @@ elements.modeSelect.addEventListener('change', (event) => {
 });
 elements.difficultySelect.addEventListener('change', (event) => {
     difficulty = parseInt(event.target.value, 10);
+    init();
+});
+elements.firstPlayerSelect.addEventListener('change', (event) => {
+    firstPlayer = event.target.value;
     init();
 });
 elements.renjuToggle.addEventListener('change', () => {
