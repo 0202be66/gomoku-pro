@@ -9,6 +9,14 @@
 
 ## 2026-04-17
 
+### `afd9785` `feat: expand replay controls and playback`
+
+- 新增当前终局“进入复盘”入口
+- 新增“复盘最近一局”入口
+- 复盘支持开局、上一步、下一步、终局与自动播放
+- 复盘终局会重新展示胜利线
+- 退出复盘后可恢复当前真实对局节奏
+
 ### `c8eea18` `feat: improve autosave controls and status`
 
 - 为自动存档补充“立即保存 / 清除存档”操作
