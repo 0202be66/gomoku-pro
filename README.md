@@ -1,7 +1,7 @@
 # ⚪⚫ Gomoku Pro - 卓越五子棋博弈系统
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Build Status](https://img.shields.io/badge/Version-1.0.0-blue.svg)]()
+[![Build Status](https://img.shields.io/badge/Version-1.0.1-blue.svg)]()
 [![Platform: Web](https://img.shields.io/badge/Platform-Web-brightgreen.svg)]()
 
 **五子棋卓越版** 是一款基于 Canvas 开发的专业级五子棋博弈系统。它不仅拥有精致的视觉效果和拟真的交互动画，更内置了强大的 AI 引擎与专业的连珠（Renju）禁手规则。
@@ -50,8 +50,9 @@
 
 - 版本规范：[VERSIONING.md](VERSIONING.md)
 - 更新记录：[CHANGELOG.md](CHANGELOG.md)
+- 当前版本标签：`v1.0.1`
 - 当前稳定回滚标签：`v1.0.0-stable-20260417`
-- 当前最新提交：`4b1679e` `fix: restore board input and stabilize ai turns`
+- 当前最新提交：`79dfac7` `docs: add changelog for recent updates`
 
 ---
 

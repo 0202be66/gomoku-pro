@@ -4,7 +4,8 @@
 
 ## 当前基线
 
-- 最新已上传提交: `e69158a` `fix: complete init flow and align board coordinates`
+- 当前发布标签: `v1.0.1`
+- 最新已上传提交: `79dfac7` `docs: add changelog for recent updates`
 - 当前稳定回滚标签: `v1.0.0-stable-20260417`
 
 ## 提交规范
