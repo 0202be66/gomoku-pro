@@ -108,6 +108,17 @@
                 <section class="action-panel">
                     <button id="undo-btn" class="btn secondary">悔棋</button>
                     <button id="restart-btn" class="btn primary">重开新局</button>
+                    <div class="autosave-panel">
+                        <div class="autosave-head">
+                            <span class="record-label">自动存档</span>
+                            <strong id="autosave-state">当前无未结束存档</strong>
+                        </div>
+                        <div id="autosave-time" class="autosave-time">上次保存：未保存</div>
+                        <div class="autosave-actions">
+                            <button id="autosave-save-btn" class="btn secondary compact">立即保存</button>
+                            <button id="autosave-clear-btn" class="btn secondary compact">清除存档</button>
+                        </div>
+                    </div>
                     <div class="toggle-group">
                         <label><input type="checkbox" id="sound-toggle" checked> 启用落子音效</label>
                         <label><input type="checkbox" id="particle-toggle" checked> 启用获胜特效</label>

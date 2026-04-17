@@ -33,7 +33,11 @@ const elements = {
     restoreBanner: document.getElementById('restore-banner'),
     restoreText: document.getElementById('restore-text'),
     restoreResumeBtn: document.getElementById('restore-resume-btn'),
-    restoreDiscardBtn: document.getElementById('restore-discard-btn')
+    restoreDiscardBtn: document.getElementById('restore-discard-btn'),
+    autosaveState: document.getElementById('autosave-state'),
+    autosaveTime: document.getElementById('autosave-time'),
+    autosaveSaveBtn: document.getElementById('autosave-save-btn'),
+    autosaveClearBtn: document.getElementById('autosave-clear-btn')
 };
 
 // 游戏常量
@@ -225,6 +229,7 @@ function persistAutosave(snapshot) {
     } catch (error) {
         // 忽略存储异常，不影响对局
     }
+    updateAutosavePanel();
 }
 
 function clearAutosave() {
@@ -234,6 +239,7 @@ function clearAutosave() {
     } catch (error) {
         // 忽略存储异常，不影响对局
     }
+    updateAutosavePanel();
 }
 
 function buildAutosaveSnapshot() {
@@ -261,6 +267,31 @@ function saveCurrentGameState() {
     persistAutosave(buildAutosaveSnapshot());
 }
 
+function handleManualSave() {
+    if (gameOver) {
+        setTransientStatus('对局已结束，无需保存当前棋盘。');
+        return;
+    }
+    if (history.length === 0) {
+        setTransientStatus('当前仍是空棋盘，没有可保存内容。');
+        return;
+    }
+    if (aiThinking || animatingStone) {
+        setTransientStatus('请等待 AI 或动画结束后再手动保存。');
+        return;
+    }
+    saveCurrentGameState();
+    const save = loadAutosave();
+    setTransientStatus(`已手动保存对局。${save ? ` 保存时间：${formatAutosaveTimestamp(save.savedAt)}` : ''}`, 2000);
+}
+
+function handleClearAutosave() {
+    const existed = Boolean(loadAutosave());
+    clearAutosave();
+    hideRestoreBanner();
+    setTransientStatus(existed ? '已清除未结束对局存档。' : '当前没有可清除的存档。', 1800);
+}
+
 function formatAutosaveSummary(save) {
     const modeLabel = save.mode === 'pve' ? '人机' : '双人';
     const firstMoveLabel = save.firstPlayer === 'ai' ? 'AI先手' : '玩家先手';
@@ -268,15 +299,44 @@ function formatAutosaveSummary(save) {
     return `${modeLabel} · ${firstMoveLabel} · ${save.history.length}步 · ${formatDuration(save.seconds || 0)} · 保存于 ${savedAt}`;
 }
 
+function formatAutosaveTimestamp(savedAt) {
+    if (!savedAt) {
+        return '未保存';
+    }
+    const date = new Date(savedAt);
+    if (Number.isNaN(date.getTime())) {
+        return '未保存';
+    }
+    return date.toLocaleString('zh-CN', { hour12: false });
+}
+
+function updateAutosavePanel() {
+    const save = loadAutosave();
+    if (save) {
+        elements.autosaveState.innerText = '检测到未结束存档';
+        elements.autosaveTime.innerText = `上次保存：${formatAutosaveTimestamp(save.savedAt)}`;
+        elements.autosaveClearBtn.disabled = false;
+    } else {
+        elements.autosaveState.innerText = '当前无未结束存档';
+        elements.autosaveTime.innerText = '上次保存：未保存';
+        elements.autosaveClearBtn.disabled = true;
+    }
+
+    const canManualSave = !gameOver && history.length > 0 && !aiThinking && !animatingStone;
+    elements.autosaveSaveBtn.disabled = !canManualSave;
+}
+
 function showRestoreBanner(save) {
     pendingRestoreGame = save;
     elements.restoreText.innerText = formatAutosaveSummary(save);
     elements.restoreBanner.classList.remove('hidden');
+    updateAutosavePanel();
 }
 
 function hideRestoreBanner() {
     pendingRestoreGame = null;
     elements.restoreBanner.classList.add('hidden');
+    updateAutosavePanel();
 }
 
 function formatDuration(totalSeconds) {
@@ -448,7 +508,8 @@ function applyAutosave(save) {
     elements.timer.innerText = formatDuration(seconds);
     updateUI();
     render();
-    setTransientStatus('已恢复上次未完成对局。', 1800);
+    const saveTime = formatAutosaveTimestamp(save.savedAt);
+    setTransientStatus(`已恢复上次未完成对局。上次保存：${saveTime}`, 2200);
     startTimer();
     saveCurrentGameState();
 
@@ -1141,6 +1202,7 @@ function updateUI() {
     elements.powerFill.style.width = `${Math.max(0, Math.min(100, (elo - 800) / 20))}%`;
     renderMatchRecordSummary();
     updateStatusText();
+    updateAutosavePanel();
 }
 
 function startTimer() {
@@ -1247,6 +1309,9 @@ elements.restoreDiscardBtn.addEventListener('click', () => {
         queueAiTurn();
     }
 });
+
+elements.autosaveSaveBtn.addEventListener('click', handleManualSave);
+elements.autosaveClearBtn.addEventListener('click', handleClearAutosave);
 
 elements.restartBtn.addEventListener('click', () => {
     clearAutosave();

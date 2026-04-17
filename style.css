@@ -101,6 +101,44 @@ main { display: flex; gap: 50px; align-items: flex-start; }
     font-size: 0.92rem;
 }
 
+.autosave-panel {
+    margin: 6px 0 12px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
+
+.autosave-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+}
+
+.autosave-head strong {
+    color: #1f2937;
+    font-size: 0.95rem;
+}
+
+.autosave-time {
+    margin-top: 6px;
+    color: #64748b;
+    font-size: 0.82rem;
+    line-height: 1.4;
+}
+
+.autosave-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+
+.autosave-actions .btn.compact {
+    flex: 1;
+}
+
 .board-wrapper {
     position: relative;
     width: min(100%, 604px);
@@ -323,6 +361,12 @@ input[type="checkbox"] { accent-color: var(--accent-color); width: 16px; height:
 
     .btn.compact {
         flex: 1;
+    }
+
+    .autosave-head {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
     }
 
     section {
