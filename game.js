@@ -30,6 +30,7 @@ const elements = {
     recordTotal: document.getElementById('record-total'),
     recordWinRate: document.getElementById('record-win-rate'),
     recordLatest: document.getElementById('record-latest'),
+    recordHistoryList: document.getElementById('record-history-list'),
     recordReplayBtn: document.getElementById('record-replay-btn'),
     replayEntry: document.getElementById('replay-entry'),
     enterReplayBtn: document.getElementById('enter-replay-btn'),
@@ -435,6 +436,31 @@ function renderMatchRecordSummary() {
 
     elements.recordLatest.innerText = describeRecord(matchRecords[0]);
     elements.recordReplayBtn.disabled = matchRecords.length === 0 || !Array.isArray(matchRecords[0].moveHistory) || matchRecords[0].moveHistory.length === 0;
+    renderRecordHistoryList();
+}
+
+function renderRecordHistoryList() {
+    if (!elements.recordHistoryList) {
+        return;
+    }
+
+    if (matchRecords.length === 0) {
+        elements.recordHistoryList.innerHTML = '<div class="record-history-empty">暂无可复盘的对局记录。</div>';
+        return;
+    }
+
+    elements.recordHistoryList.innerHTML = matchRecords.map((record, index) => {
+        const title = `${index + 1}. ${record.mode === 'pve' ? '人机' : '双人'} · ${record.result === 'draw' ? '平局' : (record.playerWon ? '玩家胜' : record.mode === 'pve' ? 'AI 胜' : record.winner === 1 ? '黑胜' : '白胜')}`;
+        const meta = `${record.firstPlayer === 'ai' ? 'AI先手' : '玩家先手'} · ${record.moves}步 · ${formatDuration(record.durationSec)}`;
+        const disabled = !Array.isArray(record.moveHistory) || record.moveHistory.length === 0 ? 'disabled' : '';
+        return `
+            <div class="record-history-item">
+                <strong>${title}</strong>
+                <span>${meta}</span>
+                <button class="btn secondary compact record-history-replay-btn" data-record-index="${index}" ${disabled}>复盘此局</button>
+            </div>
+        `;
+    }).join('');
 }
 
 function buildBoardLayer() {
@@ -1535,6 +1561,21 @@ elements.autosaveSaveBtn.addEventListener('click', handleManualSave);
 elements.autosaveClearBtn.addEventListener('click', handleClearAutosave);
 elements.enterReplayBtn.addEventListener('click', () => enterReplay());
 elements.recordReplayBtn.addEventListener('click', () => enterReplay(matchRecords[0] || null));
+elements.recordHistoryList.addEventListener('click', (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+        return;
+    }
+    const button = target.closest('.record-history-replay-btn');
+    if (!button) {
+        return;
+    }
+    const index = Number(button.dataset.recordIndex);
+    if (!Number.isInteger(index) || !matchRecords[index]) {
+        return;
+    }
+    enterReplay(matchRecords[index]);
+});
 elements.replayStartBtn.addEventListener('click', () => applyReplayPosition(0));
 elements.replayPrevBtn.addEventListener('click', () => applyReplayPosition(replayIndex - 1));
 elements.replayNextBtn.addEventListener('click', () => applyReplayPosition(replayIndex + 1));

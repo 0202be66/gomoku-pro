@@ -310,6 +310,55 @@ h3::before { content: ''; width: 4px; height: 16px; background: var(--accent-col
     margin-top: 14px;
 }
 
+.record-history {
+    margin-top: 16px;
+}
+
+.record-history-list {
+    margin-top: 10px;
+    display: grid;
+    gap: 10px;
+    max-height: 320px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.record-history-item {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px;
+}
+
+.record-history-item strong {
+    display: block;
+    color: #1f2937;
+    font-size: 0.92rem;
+}
+
+.record-history-item span {
+    display: block;
+    margin-top: 6px;
+    color: #64748b;
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
+.record-history-item .btn.compact {
+    width: 100%;
+    margin-top: 10px;
+}
+
+.record-history-empty {
+    padding: 12px;
+    border-radius: 12px;
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    color: #64748b;
+    font-size: 0.88rem;
+    line-height: 1.45;
+}
+
 .btn { 
     width: 100%; padding: 14px; border: none; border-radius: 12px; 
     font-weight: 700; cursor: pointer; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
