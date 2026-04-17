@@ -1,65 +1,789 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
-<style>
-body { margin: 20px; }
-canvas { border: 1px solid red; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>五子棋规则边界样例页</title>
+    <style>
+        :root {
+            --wood: #f1c47f;
+            --wood-dark: #d4a76a;
+            --ink: #1f2937;
+            --line: rgba(44, 62, 80, 0.7);
+            --panel: rgba(255, 255, 255, 0.96);
+            --accent: #2563eb;
+            --ok: #15803d;
+            --warn: #b45309;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            padding: 24px;
+            background:
+                radial-gradient(circle at top left, rgba(255, 255, 255, 0.95), rgba(231, 235, 239, 0.98)),
+                linear-gradient(180deg, #f8fafc, #e5e7eb);
+            color: var(--ink);
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+        }
+
+        .app {
+            width: min(1200px, 100%);
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 340px minmax(0, 1fr);
+            gap: 24px;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+        }
+
+        h1,
+        h2,
+        h3,
+        p {
+            margin: 0;
+        }
+
+        .header {
+            margin-bottom: 16px;
+        }
+
+        .header p {
+            margin-top: 8px;
+            color: #475569;
+            line-height: 1.5;
+        }
+
+        .scenario-list {
+            display: grid;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .scenario-btn {
+            width: 100%;
+            border: 1px solid rgba(37, 99, 235, 0.16);
+            background: #eff6ff;
+            color: #1d4ed8;
+            border-radius: 14px;
+            padding: 12px 14px;
+            text-align: left;
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.2s ease;
+        }
+
+        .scenario-btn:hover {
+            background: #dbeafe;
+            transform: translateY(-1px);
+        }
+
+        .scenario-btn.active {
+            background: #1d4ed8;
+            color: white;
+            border-color: transparent;
+        }
+
+        .meta {
+            display: grid;
+            gap: 14px;
+            margin-top: 16px;
+        }
+
+        .meta-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 14px;
+        }
+
+        .meta-label {
+            display: block;
+            font-size: 0.76rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
+
+        .meta-value {
+            line-height: 1.55;
+            white-space: pre-wrap;
+        }
+
+        .meta-value.ok {
+            color: var(--ok);
+        }
+
+        .meta-value.warn {
+            color: var(--warn);
+        }
+
+        .board-panel {
+            display: grid;
+            gap: 16px;
+        }
+
+        .board-wrap {
+            width: min(100%, 604px);
+            padding: 2px;
+            border-radius: 10px;
+            background: #c19a6b;
+            box-shadow:
+                0 8px 22px rgba(15, 23, 42, 0.16),
+                inset 0 0 70px rgba(0, 0, 0, 0.08);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            background: var(--wood);
+            background-image:
+                repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(212, 167, 106, 0.1) 41px),
+                repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(212, 167, 106, 0.1) 41px);
+            border-radius: 8px;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px 16px;
+            color: #475569;
+            font-size: 0.92rem;
+        }
+
+        .legend span::before {
+            content: "";
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        .legend .black::before {
+            background: #111827;
+        }
+
+        .legend .white::before {
+            background: #f8fafc;
+            border: 1px solid #94a3b8;
+        }
+
+        .legend .mark::before {
+            background: #dc2626;
+        }
+
+        @media (max-width: 960px) {
+            .app {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 12px;
+            }
+
+            .panel {
+                padding: 16px;
+                border-radius: 16px;
+            }
+
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body>
-<h3>If you see 15x15 grid lines + red dots at star positions + black stone at center, canvas is working.</h3>
-<canvas id="board" width="600" height="600"></canvas>
-<script>
-const canvas = document.getElementById('board');
-const ctx = canvas.getContext('2d');
+    <div class="app">
+        <aside class="panel">
+            <div class="header">
+                <h1>规则边界样例页</h1>
+                <p>用于快速验证五连判胜、禁手、悔棋轮次恢复和 AI 先手相关边界。点击左侧样例即可切换。</p>
+            </div>
 
-const size = 15;
-const cellSize = 40;
-const padding = cellSize/2;
+            <div id="scenario-list" class="scenario-list"></div>
 
-console.log('Canvas size:', canvas.width, canvas.height);
-console.log('Cell size:', cellSize, 'Padding:', padding);
+            <div class="meta">
+                <div class="meta-card">
+                    <span class="meta-label">当前样例说明</span>
+                    <div id="scenario-description" class="meta-value"></div>
+                </div>
+                <div class="meta-card">
+                    <span class="meta-label">预期结果</span>
+                    <div id="scenario-expected" class="meta-value"></div>
+                </div>
+                <div class="meta-card">
+                    <span class="meta-label">当前计算结果</span>
+                    <div id="scenario-actual" class="meta-value ok"></div>
+                </div>
+            </div>
+        </aside>
 
-// Fill background
-ctx.fillStyle = '#f1c47f';
-ctx.fillRect(0, 0, 600, 600);
+        <main class="board-panel">
+            <section class="panel">
+                <h2 id="scenario-title">样例详情</h2>
+                <p id="scenario-subtitle" style="margin-top: 8px; color: #64748b;"></p>
+                <div style="margin-top: 18px;" class="board-wrap">
+                    <canvas id="board" width="600" height="600"></canvas>
+                </div>
+                <div style="margin-top: 16px;" class="legend">
+                    <span class="black">黑棋</span>
+                    <span class="white">白棋</span>
+                    <span class="mark">最后一步 / 关键点</span>
+                </div>
+            </section>
 
-// Grid
-ctx.strokeStyle = '#333';
-ctx.lineWidth = 1.5;
-for(let i=0; i<size; i++) {
-    const pos = padding + i * cellSize;
-    console.log('Line', i, 'at', pos);
-    ctx.beginPath();
-    ctx.moveTo(padding, pos);
-    ctx.lineTo(600-padding, pos);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(pos, padding);
-    ctx.lineTo(pos, 600-padding);
-    ctx.stroke();
-}
+            <section class="panel">
+                <h3>调试数据</h3>
+                <div class="result-grid" style="margin-top: 14px;">
+                    <div class="meta-card">
+                        <span class="meta-label">棋盘与回合</span>
+                        <div id="scenario-state" class="meta-value"></div>
+                    </div>
+                    <div class="meta-card">
+                        <span class="meta-label">历史记录 / 悔棋模拟</span>
+                        <div id="scenario-history" class="meta-value"></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
 
-// Star points
-ctx.fillStyle = 'red';
-const stars = [[3,3],[11,3],[3,11],[11,11],[7,7]];
-stars.forEach(([r,c]) => {
-    const x = padding + c * cellSize;
-    const y = padding + r * cellSize;
-    ctx.beginPath();
-    ctx.arc(x, y, 5, 0, Math.PI*2);
-    ctx.fill();
-    console.log('Star at', r, c, '->', x, y);
-});
+    <script>
+        const canvas = document.getElementById('board');
+        const ctx = canvas.getContext('2d');
 
-// Center stone
-const cx = padding + 7 * cellSize;
-const cy = padding + 7 * cellSize;
-ctx.beginPath();
-ctx.arc(cx, cy, 17, 0, Math.PI*2);
-ctx.fillStyle = 'black';
-ctx.fill();
-console.log('Center stone at', cx, cy);
-</script>
+        const size = 15;
+        const cellSize = 40;
+        const padding = cellSize / 2;
+        const gridExtent = canvas.width - padding;
+        const directions = [[1, 0], [0, 1], [1, 1], [1, -1]];
+
+        const scenarios = [
+            {
+                id: 'five-win',
+                title: '五连判胜',
+                subtitle: '黑棋横向五连，最后一步落在 (7, 11)',
+                description: '验证标准五连判胜。最后一步补成黑棋五连后，应立即判定黑棋获胜，并返回完整连线。',
+                expected: 'checkWin 返回非空连线，赢家为黑棋。',
+                create() {
+                    const board = createEmptyBoard();
+                    const line = [[7, 7], [7, 8], [7, 9], [7, 10], [7, 11]];
+                    for (const [r, c] of line) {
+                        board[r][c] = 1;
+                    }
+                    return {
+                        board,
+                        currentPlayer: 1,
+                        lastMove: { r: 7, c: 11 },
+                        history: line.map(([r, c]) => ({ r, c, p: 1 }))
+                    };
+                },
+                evaluate(state) {
+                    const winLine = checkWin(state.board, state.lastMove.r, state.lastMove.c, 1);
+                    return {
+                        summary: winLine ? `通过：黑棋成五，连线长度 ${winLine.length}` : '失败：未识别出五连。',
+                        ok: Boolean(winLine),
+                        state: `当前手方：黑棋\n最后一步：(${state.lastMove.r}, ${state.lastMove.c})`,
+                        history: summarizeHistory(state.history)
+                    };
+                }
+            },
+            {
+                id: 'overline',
+                title: '长连禁手',
+                subtitle: '黑棋在横线形成六连',
+                description: '验证连珠规则中的长连禁手。黑棋最后一步后如果形成 6 子及以上，应触发长连禁手。',
+                expected: 'checkForbiddenMove 返回“长连禁手 (超过五子)”。',
+                create() {
+                    const board = createEmptyBoard();
+                    [[7, 6], [7, 7], [7, 8], [7, 9], [7, 10]].forEach(([r, c]) => {
+                        board[r][c] = 1;
+                    });
+                    return {
+                        board,
+                        currentPlayer: 1,
+                        lastMove: { r: 7, c: 11 },
+                        history: [[7, 6], [7, 7], [7, 8], [7, 9], [7, 10]].map(([r, c]) => ({ r, c, p: 1 }))
+                    };
+                },
+                evaluate(state) {
+                    const board = cloneBoard(state.board);
+                    const result = checkForbiddenMove(board, state.lastMove.r, state.lastMove.c);
+                    return {
+                        summary: result || '失败：未识别出长连禁手。',
+                        ok: result === '长连禁手 (超过五子)',
+                        state: `当前手方：黑棋\n测试落点：(${state.lastMove.r}, ${state.lastMove.c})`,
+                        history: summarizeHistory(state.history)
+                    };
+                }
+            },
+            {
+                id: 'double-three',
+                title: '三三禁手',
+                subtitle: '黑棋在中心点形成双活三',
+                description: '经典双活三样例：最后一步落在中心后，横向和纵向都形成活三，应判定三三禁手。',
+                expected: 'checkForbiddenMove 返回“三三禁手 (双重活三)”。',
+                create() {
+                    const board = createEmptyBoard();
+                    [[7, 6], [7, 8], [6, 7], [8, 7]].forEach(([r, c]) => {
+                        board[r][c] = 1;
+                    });
+                    return {
+                        board,
+                        currentPlayer: 1,
+                        lastMove: { r: 7, c: 7 },
+                        history: [[7, 6], [7, 8], [6, 7], [8, 7]].map(([r, c]) => ({ r, c, p: 1 }))
+                    };
+                },
+                evaluate(state) {
+                    const board = cloneBoard(state.board);
+                    const result = checkForbiddenMove(board, state.lastMove.r, state.lastMove.c);
+                    return {
+                        summary: result || '失败：未识别出三三禁手。',
+                        ok: result === '三三禁手 (双重活三)',
+                        state: `当前手方：黑棋\n测试落点：(${state.lastMove.r}, ${state.lastMove.c})`,
+                        history: summarizeHistory(state.history)
+                    };
+                }
+            },
+            {
+                id: 'double-four',
+                title: '四四禁手',
+                subtitle: '黑棋一手形成横竖双四',
+                description: '中心落子后同时形成两个“四”，应判定四四禁手。',
+                expected: 'checkForbiddenMove 返回“四四禁手 (双重四路)”。',
+                create() {
+                    const board = createEmptyBoard();
+                    [[7, 5], [7, 6], [7, 8], [6, 7], [8, 7], [9, 7]].forEach(([r, c]) => {
+                        board[r][c] = 1;
+                    });
+                    return {
+                        board,
+                        currentPlayer: 1,
+                        lastMove: { r: 7, c: 7 },
+                        history: [[7, 5], [7, 6], [7, 8], [6, 7], [8, 7], [9, 7]].map(([r, c]) => ({ r, c, p: 1 }))
+                    };
+                },
+                evaluate(state) {
+                    const board = cloneBoard(state.board);
+                    const result = checkForbiddenMove(board, state.lastMove.r, state.lastMove.c);
+                    return {
+                        summary: result || '失败：未识别出四四禁手。',
+                        ok: result === '四四禁手 (双重四路)',
+                        state: `当前手方：黑棋\n测试落点：(${state.lastMove.r}, ${state.lastMove.c})`,
+                        history: summarizeHistory(state.history)
+                    };
+                }
+            },
+            {
+                id: 'undo-recovery',
+                title: '悔棋后轮次恢复',
+                subtitle: '玩家先手的人机模式，悔棋应回到玩家回合',
+                description: '在人机模式且玩家先手时，双方各下一手后悔棋，应同时回退两步，并恢复到玩家回合。',
+                expected: '悔棋前历史 4 步，悔棋后历史 2 步，当前轮到黑棋（玩家）。',
+                create() {
+                    const history = [
+                        { r: 7, c: 7, p: 1 },
+                        { r: 7, c: 8, p: 2 },
+                        { r: 8, c: 7, p: 1 },
+                        { r: 8, c: 8, p: 2 }
+                    ];
+                    return {
+                        board: buildBoardFromHistory(history),
+                        currentPlayer: 1,
+                        history,
+                        mode: 'pve',
+                        firstPlayer: 'human'
+                    };
+                },
+                evaluate(state) {
+                    const undone = simulateUndo(state.history, 'pve');
+                    return {
+                        summary: `悔棋后剩余 ${undone.history.length} 步，当前轮到 ${undone.currentPlayer === 1 ? '黑棋' : '白棋'}`,
+                        ok: undone.history.length === 2 && undone.currentPlayer === 1,
+                        state: `悔棋前历史：${state.history.length} 步\n模式：人机\n先手方：玩家`,
+                        history: `悔棋前：${summarizeHistory(state.history)}\n悔棋后：${summarizeHistory(undone.history)}`
+                    };
+                }
+            },
+            {
+                id: 'ai-first-undo',
+                title: 'AI先手后悔棋恢复',
+                subtitle: 'AI 先手时，悔棋后应回到 AI 回合',
+                description: 'AI 先手的人机模式下，双方各下一手后悔棋，应同时清除两步，并恢复到黑棋 AI 回合。',
+                expected: '悔棋后历史为空，当前轮到黑棋（AI）。',
+                create() {
+                    const history = [
+                        { r: 7, c: 7, p: 1 },
+                        { r: 7, c: 8, p: 2 }
+                    ];
+                    return {
+                        board: buildBoardFromHistory(history),
+                        currentPlayer: 1,
+                        history,
+                        mode: 'pve',
+                        firstPlayer: 'ai'
+                    };
+                },
+                evaluate(state) {
+                    const undone = simulateUndo(state.history, 'pve');
+                    const aiTurn = undone.currentPlayer === 1;
+                    return {
+                        summary: `悔棋后剩余 ${undone.history.length} 步，当前轮到 ${undone.currentPlayer === 1 ? '黑棋 (AI)' : '白棋 (玩家)'}`,
+                        ok: undone.history.length === 0 && aiTurn,
+                        state: `悔棋前历史：${state.history.length} 步\n模式：人机\n先手方：AI`,
+                        history: `悔棋前：${summarizeHistory(state.history)}\n悔棋后：${summarizeHistory(undone.history)}`
+                    };
+                }
+            }
+        ];
+
+        const titleEl = document.getElementById('scenario-title');
+        const subtitleEl = document.getElementById('scenario-subtitle');
+        const descriptionEl = document.getElementById('scenario-description');
+        const expectedEl = document.getElementById('scenario-expected');
+        const actualEl = document.getElementById('scenario-actual');
+        const stateEl = document.getElementById('scenario-state');
+        const historyEl = document.getElementById('scenario-history');
+        const listEl = document.getElementById('scenario-list');
+
+        function createEmptyBoard() {
+            return Array.from({ length: size }, () => Array(size).fill(0));
+        }
+
+        function cloneBoard(board) {
+            return board.map((row) => [...row]);
+        }
+
+        function buildBoardFromHistory(history) {
+            const board = createEmptyBoard();
+            for (const move of history) {
+                board[move.r][move.c] = move.p;
+            }
+            return board;
+        }
+
+        function isInside(r, c) {
+            return r >= 0 && r < size && c >= 0 && c < size;
+        }
+
+        function drawBoard(state) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = varLine();
+            ctx.lineWidth = 1;
+            for (let i = 0; i < size; i++) {
+                ctx.beginPath();
+                ctx.moveTo(padding, i * cellSize + padding);
+                ctx.lineTo(gridExtent, i * cellSize + padding);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(i * cellSize + padding, padding);
+                ctx.lineTo(i * cellSize + padding, gridExtent);
+                ctx.stroke();
+            }
+
+            ctx.fillStyle = 'rgba(44, 62, 80, 0.9)';
+            [[3, 3], [11, 3], [3, 11], [11, 11], [7, 7]].forEach(([r, c]) => {
+                ctx.beginPath();
+                ctx.arc(c * cellSize + padding, r * cellSize + padding, 4, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    if (state.board[r][c] !== 0) {
+                        drawStone(r, c, state.board[r][c]);
+                    }
+                }
+            }
+
+            if (state.lastMove) {
+                ctx.fillStyle = '#dc2626';
+                ctx.beginPath();
+                ctx.arc(state.lastMove.c * cellSize + padding, state.lastMove.r * cellSize + padding, 5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function drawStone(r, c, player) {
+            const x = padding + c * cellSize;
+            const y = padding + r * cellSize;
+
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.shadowBlur = 8;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
+            ctx.shadowColor = 'rgba(0,0,0,0.35)';
+            ctx.beginPath();
+            ctx.arc(0, 0, 17, 0, Math.PI * 2);
+            const gradient = ctx.createRadialGradient(-5, -5, 2, 0, 0, 17);
+            if (player === 1) {
+                gradient.addColorStop(0, '#555');
+                gradient.addColorStop(1, '#000');
+            } else {
+                gradient.addColorStop(0, '#fff');
+                gradient.addColorStop(1, '#d1d5db');
+            }
+            ctx.fillStyle = gradient;
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function varLine() {
+            return 'rgba(44, 62, 80, 0.7)';
+        }
+
+        function summarizeHistory(history) {
+            if (!history || history.length === 0) {
+                return '无';
+            }
+            return history
+                .map((move, index) => `${index + 1}. ${move.p === 1 ? '黑' : '白'}(${move.r},${move.c})`)
+                .join('  ');
+        }
+
+        function simulateUndo(history, mode) {
+            const nextHistory = history.slice();
+            if (nextHistory.length === 0) {
+                return { history: [], currentPlayer: 1 };
+            }
+
+            const stepsToUndo = mode === 'pve' && nextHistory.length > 1 ? 2 : 1;
+            nextHistory.splice(-stepsToUndo, stepsToUndo);
+            if (nextHistory.length === 0) {
+                return { history: [], currentPlayer: 1 };
+            }
+
+            const latestMove = nextHistory[nextHistory.length - 1];
+            return {
+                history: nextHistory,
+                currentPlayer: latestMove.p === 1 ? 2 : 1
+            };
+        }
+
+        function checkWin(board, r, c, player) {
+            for (const [dr, dc] of directions) {
+                let count = 1;
+                const line = [{ r, c }];
+
+                let nr = r + dr;
+                let nc = c + dc;
+                while (isInside(nr, nc) && board[nr][nc] === player) {
+                    count++;
+                    line.push({ r: nr, c: nc });
+                    nr += dr;
+                    nc += dc;
+                }
+
+                nr = r - dr;
+                nc = c - dc;
+                while (isInside(nr, nc) && board[nr][nc] === player) {
+                    count++;
+                    line.unshift({ r: nr, c: nc });
+                    nr -= dr;
+                    nc -= dc;
+                }
+
+                if (count >= 5) {
+                    return line;
+                }
+            }
+            return null;
+        }
+
+        function checkForbiddenMove(board, r, c) {
+            let threeCount = 0;
+            let fourCount = 0;
+
+            for (const [dr, dc] of directions) {
+                let count = 1;
+                let nr = r + dr;
+                let nc = c + dc;
+                while (isInside(nr, nc) && board[nr][nc] === 1) {
+                    count++;
+                    nr += dr;
+                    nc += dc;
+                }
+                nr = r - dr;
+                nc = c - dc;
+                while (isInside(nr, nc) && board[nr][nc] === 1) {
+                    count++;
+                    nr -= dr;
+                    nc -= dc;
+                }
+                if (count > 5) {
+                    return '长连禁手 (超过五子)';
+                }
+
+                if (isFour(board, r, c, dr, dc)) {
+                    fourCount++;
+                }
+                if (isLiveThree(board, r, c, dr, dc)) {
+                    threeCount++;
+                }
+            }
+
+            if (fourCount >= 2) {
+                return '四四禁手 (双重四路)';
+            }
+            if (threeCount >= 2) {
+                return '三三禁手 (双重活三)';
+            }
+            return null;
+        }
+
+        function isFour(board, r, c, dr, dc) {
+            board[r][c] = 1;
+            for (let i = -4; i <= 0; i++) {
+                let segment = 0;
+                for (let j = 0; j < 5; j++) {
+                    const nr = r + (i + j) * dr;
+                    const nc = c + (i + j) * dc;
+                    if (isInside(nr, nc)) {
+                        if (board[nr][nc] === 1) {
+                            segment++;
+                        } else if (board[nr][nc] !== 0) {
+                            segment = -100;
+                            break;
+                        }
+                    } else {
+                        segment = -100;
+                        break;
+                    }
+                }
+                if (segment === 4) {
+                    board[r][c] = 0;
+                    return true;
+                }
+            }
+            board[r][c] = 0;
+            return false;
+        }
+
+        function isLiveThree(board, r, c, dr, dc) {
+            board[r][c] = 1;
+            let live = false;
+            for (let i = -3; i <= 0; i++) {
+                let segment = 0;
+                const positions = [];
+                for (let j = 0; j < 4; j++) {
+                    const nr = r + (i + j) * dr;
+                    const nc = c + (i + j) * dc;
+                    if (isInside(nr, nc)) {
+                        if (board[nr][nc] === 1) {
+                            segment++;
+                        } else if (board[nr][nc] === 0) {
+                            positions.push({ r: nr, c: nc });
+                        } else {
+                            segment = -100;
+                            break;
+                        }
+                    } else {
+                        segment = -100;
+                        break;
+                    }
+                }
+                if (segment === 3 && positions.length === 1) {
+                    const point = positions[0];
+                    if (isLiveFour(board, point.r, point.c, dr, dc)) {
+                        live = true;
+                        break;
+                    }
+                }
+            }
+            board[r][c] = 0;
+            return live;
+        }
+
+        function isLiveFour(board, r, c, dr, dc) {
+            board[r][c] = 1;
+            let count = 1;
+
+            let nr = r + dr;
+            let nc = c + dc;
+            while (isInside(nr, nc) && board[nr][nc] === 1) {
+                count++;
+                nr += dr;
+                nc += dc;
+            }
+            const headEmpty = isInside(nr, nc) && board[nr][nc] === 0;
+
+            nr = r - dr;
+            nc = c - dc;
+            while (isInside(nr, nc) && board[nr][nc] === 1) {
+                count++;
+                nr -= dr;
+                nc -= dc;
+            }
+            const tailEmpty = isInside(nr, nc) && board[nr][nc] === 0;
+
+            board[r][c] = 0;
+            return count === 4 && headEmpty && tailEmpty;
+        }
+
+        function mountScenarioList() {
+            scenarios.forEach((scenario, index) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'scenario-btn';
+                button.textContent = `${index + 1}. ${scenario.title}`;
+                button.addEventListener('click', () => showScenario(scenario.id));
+                button.dataset.scenarioId = scenario.id;
+                listEl.appendChild(button);
+            });
+        }
+
+        function showScenario(id) {
+            const scenario = scenarios.find((item) => item.id === id);
+            if (!scenario) {
+                return;
+            }
+
+            const state = scenario.create();
+            const result = scenario.evaluate(state);
+
+            titleEl.innerText = scenario.title;
+            subtitleEl.innerText = scenario.subtitle;
+            descriptionEl.innerText = scenario.description;
+            expectedEl.innerText = scenario.expected;
+            actualEl.innerText = result.summary;
+            actualEl.className = `meta-value ${result.ok ? 'ok' : 'warn'}`;
+            stateEl.innerText = result.state;
+            historyEl.innerText = result.history;
+
+            drawBoard(state);
+
+            document.querySelectorAll('.scenario-btn').forEach((button) => {
+                button.classList.toggle('active', button.dataset.scenarioId === id);
+            });
+        }
+
+        mountScenarioList();
+        showScenario('five-win');
+    </script>
 </body>
 </html>

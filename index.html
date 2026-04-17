@@ -28,6 +28,16 @@
         <main>
             <div class="board-area">
                 <div class="status-bar" id="status">系统准备就绪...</div>
+                <div id="restore-banner" class="restore-banner hidden">
+                    <div class="restore-copy">
+                        <strong>检测到未完成对局</strong>
+                        <span id="restore-text">上次对局可继续恢复。</span>
+                    </div>
+                    <div class="restore-actions">
+                        <button id="restore-resume-btn" class="btn primary compact">继续上局</button>
+                        <button id="restore-discard-btn" class="btn secondary compact">放弃</button>
+                    </div>
+                </div>
                 <div class="board-wrapper">
                     <canvas id="board" width="600" height="600"></canvas>
                     <canvas id="effects" width="600" height="600"></canvas>
@@ -52,6 +62,7 @@
                             <option value="3" selected>专家 (3步预测)</option>
                             <option value="4">棋魂 (4步预测-慎选)</option>
                         </select>
+                        <div id="difficulty-hint" class="input-hint">中等搜索宽度，兼顾进攻与防守。</div>
                     </div>
                     <div class="input-group">
                         <label>先手方</label>
@@ -73,6 +84,24 @@
                         <div class="meter-bar"><div id="power-fill" style="width: 20%"></div></div>
                         <div class="power-label">等级: <span id="rank-name">棋坛新手</span></div>
                         <div class="power-value">ELO: <span id="elo-score">1000</span></div>
+                    </div>
+                </section>
+
+                <section class="record-panel">
+                    <h3>对局记录</h3>
+                    <div class="record-grid">
+                        <div class="record-card">
+                            <span class="record-label">总局数</span>
+                            <strong id="record-total">0</strong>
+                        </div>
+                        <div class="record-card">
+                            <span class="record-label">玩家胜率</span>
+                            <strong id="record-win-rate">--</strong>
+                        </div>
+                    </div>
+                    <div class="latest-record">
+                        <span class="record-label">最近一局</span>
+                        <div id="record-latest">暂无记录</div>
                     </div>
                 </section>
 

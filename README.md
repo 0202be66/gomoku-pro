@@ -1,7 +1,7 @@
 # ⚪⚫ Gomoku Pro - 卓越五子棋博弈系统
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Build Status](https://img.shields.io/badge/Version-1.0.1-blue.svg)]()
+[![Build Status](https://img.shields.io/badge/Version-1.0.2-blue.svg)]()
 [![Platform: Web](https://img.shields.io/badge/Platform-Web-brightgreen.svg)]()
 
 **五子棋卓越版** 是一款基于 Canvas 开发的专业级五子棋博弈系统。它不仅拥有精致的视觉效果和拟真的交互动画，更内置了强大的 AI 引擎与专业的连珠（Renju）禁手规则。
@@ -12,13 +12,16 @@
 
 - **🧠 强力 AI 引擎**：基于 Minimax 算法与 Alpha-Beta 剪枝优化，支持多级难度预测，提供专家级的博弈体验。
 - **📜 专业连珠禁手**：支持可选的专业禁手规则（长连禁手、三三禁手、四四禁手），让对局更公平、更具深度。
+- **💾 自动存档恢复**：未结束对局会自动保存，刷新页面后可选择继续上局或放弃重开。
+- **📚 对局沉淀**：支持最近 20 局本地记录、总局数、玩家胜率与最近一局摘要。
 - **🎨 沉浸式交互**：
   - **落子动画**：模拟真实的物理下落过程，具备缩放与动态阴影反馈。
   - **获胜特效**：炫酷的粒子喷泉庆祝效果。
   - **拟真棋盘**：顶级榧木纹理与专业星位标注。
 - **🎵 多维度反馈**：内置极简物理撞击音效与实时状态栏提示。
 - **🏆 棋力评估系统**：内置 ELO 积分系统与段位晋升机制（从“棋坛新手”到“求败天师”）。
-- **⏮️ 智能操作**：支持无限次悔棋、重开新局及对战模式切换。
+- **⏮️ 智能操作**：支持无限次悔棋、重开新局、先手方切换与动态难度说明。
+- **🧪 调试样例页**：内置规则边界样例页，便于验证五连、禁手、悔棋轮次与 AI 先手恢复。
 
 ---
 
@@ -50,9 +53,9 @@
 
 - 版本规范：[VERSIONING.md](VERSIONING.md)
 - 更新记录：[CHANGELOG.md](CHANGELOG.md)
-- 当前版本标签：`v1.0.1`
+- 当前版本标签：`v1.0.2`
 - 当前稳定回滚标签：`v1.0.0-stable-20260417`
-- 当前最新提交：`79dfac7` `docs: add changelog for recent updates`
+- 当前开发基线：`v1.0.2`
 
 ---
 

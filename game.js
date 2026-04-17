@@ -19,13 +19,21 @@ const elements = {
     restartBtn: document.getElementById('restart-btn'),
     modeSelect: document.getElementById('mode-select'),
     difficultySelect: document.getElementById('difficulty-select'),
+    difficultyHint: document.getElementById('difficulty-hint'),
     firstPlayerSelect: document.getElementById('first-player-select'),
     renjuToggle: document.getElementById('renju-toggle'),
     soundToggle: document.getElementById('sound-toggle'),
     particleToggle: document.getElementById('particle-toggle'),
     eloScore: document.getElementById('elo-score'),
     rankName: document.getElementById('rank-name'),
-    powerFill: document.getElementById('power-fill')
+    powerFill: document.getElementById('power-fill'),
+    recordTotal: document.getElementById('record-total'),
+    recordWinRate: document.getElementById('record-win-rate'),
+    recordLatest: document.getElementById('record-latest'),
+    restoreBanner: document.getElementById('restore-banner'),
+    restoreText: document.getElementById('restore-text'),
+    restoreResumeBtn: document.getElementById('restore-resume-btn'),
+    restoreDiscardBtn: document.getElementById('restore-discard-btn')
 };
 
 // 游戏常量
@@ -34,6 +42,10 @@ const cellSize = 40;
 const padding = cellSize / 2;
 const gridExtent = canvas.width - padding;
 const ELO_STORAGE_KEY = 'gomoku_elo';
+const MATCH_RECORDS_KEY = 'gomoku_match_records';
+const AUTOSAVE_KEY = 'gomoku_autosave';
+const AUTOSAVE_VERSION = 1;
+const MAX_MATCH_RECORDS = 20;
 const ranks = ['棋坛新手', '业余棋手', '棋局老手', '馆主高手', '职业强者', '棋圣'];
 
 boardLayer.width = canvas.width;
@@ -60,8 +72,89 @@ let stoneFrame = null;
 let particleFrame = null;
 let audioCtx = null;
 let elo = loadElo();
+let matchRecords = loadMatchRecords();
+let statusHintTimeout = null;
+let transientStatusText = '';
+let suppressClickUntil = 0;
+let aiSearchTask = null;
+let pendingRestoreGame = null;
 
 buildBoardLayer();
+
+function getPlayerRoleLabel(player) {
+    if (mode !== 'pve') {
+        return player === 1 ? '玩家 1' : '玩家 2';
+    }
+    return isAiTurn(player) ? 'AI' : '您';
+}
+
+function getPieceLabel(player) {
+    return player === 1 ? '黑子' : '白子';
+}
+
+function getSideWithRoleLabel(player) {
+    return `${getPieceLabel(player)} (${getPlayerRoleLabel(player)})`;
+}
+
+function getTurnStatusMessage() {
+    if (gameOver) {
+        return elements.status.innerText;
+    }
+    if (aiThinking) {
+        return `AI 思考中，当前执子：${getPieceLabel(getAiPlayer())}。`;
+    }
+
+    const sideText = getSideWithRoleLabel(currentPlayer);
+    const renjuHint = elements.renjuToggle.checked && currentPlayer === 1 ? ' 黑棋禁手规则已生效。' : '';
+    return `${sideText}回合。${renjuHint}`;
+}
+
+function getInitStatusMessage(reason) {
+    const messages = {
+        boot: '系统准备就绪，开始新对局。',
+        restart: '已重开新局，棋盘已清空。',
+        mode: mode === 'pve' ? '已切换到人机模式，开始新对局。' : '已切换到双人模式，开始新对局。',
+        difficulty: `AI 难度已切换为 ${difficulty} 级，开始新对局。`,
+        firstPlayer: firstPlayer === 'ai' ? '已切换为 AI 先手，开始新对局。' : '已切换为玩家先手，开始新对局。'
+    };
+    return messages[reason] || '已开始新对局。';
+}
+
+function getUndoStatusMessage() {
+    if (history.length === 0) {
+        return '已撤销到开局状态。';
+    }
+    return isAiTurn()
+        ? `已悔棋，当前轮到 ${getSideWithRoleLabel(currentPlayer)}。`
+        : `已悔棋，当前轮到 ${getSideWithRoleLabel(currentPlayer)}。`;
+}
+
+function getRenjuToggleMessage() {
+    return elements.renjuToggle.checked
+        ? '已开启禁手规则，仅黑棋受限。'
+        : '已关闭禁手规则，恢复自由落子。';
+}
+
+function getResultStatusMessage(winner, reason = '') {
+    if (reason) {
+        return `${reason}，白子获胜。`;
+    }
+    return `${getSideWithRoleLabel(winner)}获胜。`;
+}
+
+function getDrawStatusMessage() {
+    return '棋局结束，双方战平。';
+}
+
+function getDifficultyDescription(level) {
+    const descriptions = {
+        1: '短搜索，偏基础应对，仍会优先直接取胜或堵住必败点。',
+        2: '轻量搜索，开始兼顾局部攻防，适合日常对弈。',
+        3: '中等搜索宽度，兼顾进攻与防守，整体最稳定。',
+        4: '高搜索宽度，选点更稳但思考更久，适合挑战。'
+    };
+    return descriptions[level] || descriptions[3];
+}
 
 function loadElo() {
     try {
@@ -78,6 +171,179 @@ function persistElo() {
     } catch (error) {
         // 忽略本地存储异常，不影响对局
     }
+}
+
+function loadMatchRecords() {
+    try {
+        const raw = localStorage.getItem(MATCH_RECORDS_KEY);
+        if (!raw) {
+            return [];
+        }
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed.slice(0, MAX_MATCH_RECORDS) : [];
+    } catch (error) {
+        return [];
+    }
+}
+
+function persistMatchRecords() {
+    try {
+        localStorage.setItem(MATCH_RECORDS_KEY, JSON.stringify(matchRecords.slice(0, MAX_MATCH_RECORDS)));
+    } catch (error) {
+        // 忽略存储异常，不影响对局
+    }
+}
+
+function isValidBoardShape(candidateBoard) {
+    return Array.isArray(candidateBoard)
+        && candidateBoard.length === size
+        && candidateBoard.every((row) => Array.isArray(row) && row.length === size);
+}
+
+function loadAutosave() {
+    try {
+        const raw = localStorage.getItem(AUTOSAVE_KEY);
+        if (!raw) {
+            return null;
+        }
+        const parsed = JSON.parse(raw);
+        if (!parsed || parsed.saveVersion !== AUTOSAVE_VERSION) {
+            return null;
+        }
+        if (!isValidBoardShape(parsed.board) || !Array.isArray(parsed.history) || parsed.history.length === 0) {
+            return null;
+        }
+        return parsed;
+    } catch (error) {
+        return null;
+    }
+}
+
+function persistAutosave(snapshot) {
+    try {
+        localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(snapshot));
+    } catch (error) {
+        // 忽略存储异常，不影响对局
+    }
+}
+
+function clearAutosave() {
+    pendingRestoreGame = null;
+    try {
+        localStorage.removeItem(AUTOSAVE_KEY);
+    } catch (error) {
+        // 忽略存储异常，不影响对局
+    }
+}
+
+function buildAutosaveSnapshot() {
+    return {
+        saveVersion: AUTOSAVE_VERSION,
+        savedAt: new Date().toISOString(),
+        board: board.map((row) => [...row]),
+        history: history.map((move) => ({ ...move })),
+        currentPlayer,
+        mode,
+        difficulty,
+        firstPlayer,
+        renjuEnabled: elements.renjuToggle.checked,
+        seconds,
+        lastMove: lastMove ? { ...lastMove } : null,
+        elo
+    };
+}
+
+function saveCurrentGameState() {
+    if (gameOver || history.length === 0) {
+        clearAutosave();
+        return;
+    }
+    persistAutosave(buildAutosaveSnapshot());
+}
+
+function formatAutosaveSummary(save) {
+    const modeLabel = save.mode === 'pve' ? '人机' : '双人';
+    const firstMoveLabel = save.firstPlayer === 'ai' ? 'AI先手' : '玩家先手';
+    const savedAt = save.savedAt ? new Date(save.savedAt).toLocaleString('zh-CN', { hour12: false }) : '刚刚';
+    return `${modeLabel} · ${firstMoveLabel} · ${save.history.length}步 · ${formatDuration(save.seconds || 0)} · 保存于 ${savedAt}`;
+}
+
+function showRestoreBanner(save) {
+    pendingRestoreGame = save;
+    elements.restoreText.innerText = formatAutosaveSummary(save);
+    elements.restoreBanner.classList.remove('hidden');
+}
+
+function hideRestoreBanner() {
+    pendingRestoreGame = null;
+    elements.restoreBanner.classList.add('hidden');
+}
+
+function formatDuration(totalSeconds) {
+    const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+    const secs = (totalSeconds % 60).toString().padStart(2, '0');
+    return `${minutes}:${secs}`;
+}
+
+function saveMatchRecord({ result, winner = null, reason = '', playerWon = null }) {
+    const aiPlayer = getAiPlayer();
+    const record = {
+        playedAt: new Date().toISOString(),
+        mode,
+        difficulty,
+        firstPlayer,
+        renjuEnabled: elements.renjuToggle.checked,
+        moves: history.length,
+        durationSec: seconds,
+        result,
+        winner,
+        reason,
+        aiPlayer,
+        playerWon
+    };
+
+    matchRecords.unshift(record);
+    if (matchRecords.length > MAX_MATCH_RECORDS) {
+        matchRecords = matchRecords.slice(0, MAX_MATCH_RECORDS);
+    }
+    persistMatchRecords();
+}
+
+function describeRecord(record) {
+    if (!record) {
+        return '暂无记录';
+    }
+
+    const modeLabel = record.mode === 'pve' ? '人机' : '双人';
+    let outcome = '平局';
+    if (record.result === 'win') {
+        if (record.mode === 'pve') {
+            outcome = record.playerWon ? '玩家胜' : 'AI 胜';
+        } else {
+            outcome = record.winner === 1 ? '黑胜' : '白胜';
+        }
+    } else if (record.result === 'forbidden') {
+        outcome = record.reason || '禁手负';
+    }
+
+    const firstMoveLabel = record.firstPlayer === 'ai' ? 'AI先手' : '玩家先手';
+    const renjuLabel = record.renjuEnabled ? '禁手开' : '禁手关';
+    return `${modeLabel} · ${firstMoveLabel} · ${outcome} · ${record.moves}步 · ${formatDuration(record.durationSec)} · ${renjuLabel}`;
+}
+
+function renderMatchRecordSummary() {
+    elements.recordTotal.innerText = String(matchRecords.length);
+
+    const rankedPveGames = matchRecords.filter((record) => record.mode === 'pve' && typeof record.playerWon === 'boolean');
+    if (rankedPveGames.length > 0) {
+        const playerWins = rankedPveGames.filter((record) => record.playerWon).length;
+        const winRate = Math.round((playerWins / rankedPveGames.length) * 100);
+        elements.recordWinRate.innerText = `${winRate}%`;
+    } else {
+        elements.recordWinRate.innerText = '--';
+    }
+
+    elements.recordLatest.innerText = describeRecord(matchRecords[0]);
 }
 
 function buildBoardLayer() {
@@ -125,6 +391,70 @@ function clearPendingActions() {
         cancelAnimationFrame(particleFrame);
         particleFrame = null;
     }
+    if (aiSearchTask) {
+        aiSearchTask.cancel();
+        aiSearchTask = null;
+    }
+}
+
+function clearTransientStatus() {
+    transientStatusText = '';
+    if (statusHintTimeout !== null) {
+        clearTimeout(statusHintTimeout);
+        statusHintTimeout = null;
+    }
+}
+
+function setTransientStatus(message, duration = 1400) {
+    clearTransientStatus();
+    transientStatusText = message;
+    elements.status.innerText = message;
+    statusHintTimeout = setTimeout(() => {
+        statusHintTimeout = null;
+        transientStatusText = '';
+        updateStatusText();
+    }, duration);
+}
+
+function applyAutosave(save) {
+    clearPendingActions();
+    clearTransientStatus();
+    hideRestoreBanner();
+
+    mode = save.mode === 'pvp' ? 'pvp' : 'pve';
+    difficulty = Number.isFinite(Number(save.difficulty)) ? Number(save.difficulty) : 3;
+    firstPlayer = save.firstPlayer === 'ai' ? 'ai' : 'human';
+    elements.modeSelect.value = mode;
+    elements.difficultySelect.value = String(difficulty);
+    elements.firstPlayerSelect.value = firstPlayer;
+    elements.renjuToggle.checked = Boolean(save.renjuEnabled);
+
+    board = save.board.map((row) => row.map((cell) => (cell === 1 || cell === 2 ? cell : 0)));
+    history = save.history.map((move) => ({ ...move }));
+    currentPlayer = save.currentPlayer === 2 ? 2 : 1;
+    gameOver = false;
+    aiThinking = false;
+    lastMove = save.lastMove ? { ...save.lastMove } : (history.length > 0 ? { ...history[history.length - 1] } : null);
+    hoveredCell = null;
+    animatingStone = null;
+    clearEffects();
+    stopTimer();
+    seconds = Math.max(0, Number(save.seconds) || 0);
+    if (Number.isFinite(Number(save.elo))) {
+        elo = Math.max(800, Math.round(Number(save.elo)));
+        persistElo();
+    }
+
+    elements.timer.innerText = formatDuration(seconds);
+    updateUI();
+    render();
+    setTransientStatus('已恢复上次未完成对局。', 1800);
+    startTimer();
+    saveCurrentGameState();
+
+    if (isAiTurn()) {
+        queueAiTurn();
+    }
 }
 
 function clearEffects() {
@@ -145,8 +475,9 @@ function isAiTurn(player = currentPlayer) {
 }
 
 // 1. 初始化
-function init() {
+function init(reason = 'boot') {
     clearPendingActions();
+    clearTransientStatus();
     board = Array.from({ length: size }, () => Array(size).fill(0));
     history = [];
     currentPlayer = 1;
@@ -161,6 +492,15 @@ function init() {
     elements.timer.innerText = '00:00';
     updateUI();
     render();
+    const restorableGame = reason === 'boot' ? loadAutosave() : null;
+    if (restorableGame) {
+        showRestoreBanner(restorableGame);
+        setTransientStatus('发现未完成对局，可继续或放弃。', 2200);
+        return;
+    }
+
+    hideRestoreBanner();
+    setTransientStatus(getInitStatusMessage(reason), 1800);
     startTimer();
     if (isAiTurn()) {
         queueAiTurn();
@@ -364,25 +704,42 @@ function queueAiTurn() {
     }
 
     aiThinking = true;
+    clearTransientStatus();
     updateUI();
 
     aiTurnTimeout = setTimeout(() => {
         aiTurnTimeout = null;
-        let move = null;
+        const snapshot = board.map((row) => [...row]);
         try {
-            move = AI.findBestMove(board, difficulty, aiPlayer);
-        } catch (error) {
-            console.error('AI move failed, falling back to first candidate.', error);
-            move = typeof AI.getCandidates === 'function'
-                ? AI.getCandidates(board, aiPlayer, aiPlayer === 1 ? 2 : 1)[0]
-                : null;
-        }
-        aiThinking = false;
+            aiSearchTask = AI.findBestMoveAsync(snapshot, difficulty, aiPlayer, (move) => {
+                aiSearchTask = null;
+                aiThinking = false;
 
-        if (move && !gameOver) {
-            placeStone(move.r, move.c);
-        } else {
-            updateUI();
+                if (move && !gameOver) {
+                    placeStone(move.r, move.c);
+                } else {
+                    updateUI();
+                }
+            });
+        } catch (error) {
+            console.error('AI move failed, falling back to synchronous search.', error);
+            aiSearchTask = null;
+            let move = null;
+            try {
+                move = AI.findBestMove(snapshot, difficulty, aiPlayer);
+            } catch (fallbackError) {
+                console.error('Synchronous AI fallback failed.', fallbackError);
+                move = typeof AI.getCandidates === 'function'
+                    ? AI.getCandidates(board, aiPlayer, aiPlayer === 1 ? 2 : 1)[0]
+                    : null;
+            }
+            aiThinking = false;
+
+            if (move && !gameOver) {
+                placeStone(move.r, move.c);
+            } else {
+                updateUI();
+            }
         }
     }, 60);
 }
@@ -410,6 +767,7 @@ function finishTurn(r, c, player) {
         resultTimeout = null;
         currentPlayer = nextPlayer;
         updateUI();
+        saveCurrentGameState();
         if (mode === 'pve' && isAiTurn() && !gameOver) {
             queueAiTurn();
         }
@@ -418,7 +776,7 @@ function finishTurn(r, c, player) {
 
 // 5. 交互与逻辑
 function placeStone(r, c) {
-    if (gameOver || aiThinking || board[r][c] !== 0) {
+    if (gameOver || aiThinking || animatingStone || board[r][c] !== 0) {
         return;
     }
 
@@ -665,10 +1023,10 @@ function handleWin(winner, line, reason = null) {
         }
     }
 
-    let statusText = `${winner === 1 ? '黑子' : '白子'} 获胜！🏁`;
-    if (reason) {
-        statusText = `${reason}，白子获胜！🏆`;
-    }
+    clearTransientStatus();
+    clearAutosave();
+    hideRestoreBanner();
+    const statusText = getResultStatusMessage(winner, reason);
     elements.status.innerText = statusText;
 
     if (mode === 'pve') {
@@ -677,6 +1035,17 @@ function handleWin(winner, line, reason = null) {
         const eloGain = playerWon ? difficulty * 20 : -15;
         elo = Math.max(800, elo + eloGain);
         persistElo();
+        saveMatchRecord({
+            result: reason ? 'forbidden' : 'win',
+            winner,
+            reason,
+            playerWon
+        });
+    } else {
+        saveMatchRecord({
+            result: 'win',
+            winner
+        });
     }
 
     updateUI();
@@ -688,29 +1057,72 @@ function handleDraw() {
     aiThinking = false;
     stopTimer();
     render();
-    elements.status.innerText = '棋局结束，双方战平。';
+    clearTransientStatus();
+    clearAutosave();
+    hideRestoreBanner();
+    elements.status.innerText = getDrawStatusMessage();
+    saveMatchRecord({
+        result: 'draw'
+    });
     updateUI();
 }
 
 // 6. UI 更新
 function updateStatusText() {
+    if (transientStatusText) {
+        elements.status.innerText = transientStatusText;
+        return;
+    }
     if (gameOver) {
         return;
     }
+    elements.status.innerText = getTurnStatusMessage();
+}
+
+function getBlockedInputReason(cell) {
+    if (gameOver) {
+        return '对局已结束，请重开或悔棋。';
+    }
     if (aiThinking) {
-        elements.status.innerText = 'AI 思考中...';
+        return 'AI 思考中，请稍候。';
+    }
+    if (animatingStone) {
+        return '落子动画进行中，请稍候。';
+    }
+    if (mode === 'pve' && isAiTurn()) {
+        return '当前是 AI 回合。';
+    }
+    if (!cell) {
+        return '请点击棋盘交叉点附近。';
+    }
+    if (board[cell.r][cell.c] !== 0) {
+        return '该位置已有棋子。';
+    }
+    return '';
+}
+
+function handleBoardInput(event, source = 'pointer') {
+    const cell = getBoardCellFromEvent(event);
+    const blockedReason = getBlockedInputReason(cell);
+    if (blockedReason) {
+        setTransientStatus(blockedReason);
         return;
     }
 
-    const side = currentPlayer === 1 ? '黑子' : '白子';
-    const aiLabel = mode === 'pve' && isAiTurn() ? ' (AI)' : '';
-    const renjuHint = elements.renjuToggle.checked && currentPlayer === 1 ? '，黑棋禁手生效' : '';
-    elements.status.innerText = `${side}${aiLabel}回合${renjuHint}`;
+    if (source === 'pointer') {
+        suppressClickUntil = Date.now() + 400;
+    } else if (Date.now() < suppressClickUntil) {
+        return;
+    }
+
+    clearTransientStatus();
+    placeStone(cell.r, cell.c);
 }
 
 function updateUI() {
     elements.p1Card.classList.toggle('active', currentPlayer === 1 && !gameOver);
     elements.p2Card.classList.toggle('active', currentPlayer === 2 && !gameOver);
+    elements.difficultyHint.innerText = getDifficultyDescription(difficulty);
     const aiPlayer = getAiPlayer();
     if (mode === 'pve') {
         elements.p1Name.innerText = aiPlayer === 1 ? '黑子 (AI)' : '黑子 (您)';
@@ -727,6 +1139,7 @@ function updateUI() {
     const rankIndex = Math.max(0, Math.min(ranks.length - 1, Math.floor((elo - 1000) / 200) + 1));
     elements.rankName.innerText = ranks[rankIndex];
     elements.powerFill.style.width = `${Math.max(0, Math.min(100, (elo - 800) / 20))}%`;
+    renderMatchRecordSummary();
     updateStatusText();
 }
 
@@ -749,14 +1162,11 @@ function stopTimer() {
 
 // 7. 事件
 canvas.addEventListener('pointerdown', (event) => {
-    if (aiThinking || (mode === 'pve' && isAiTurn())) {
-        return;
-    }
+    handleBoardInput(event, 'pointer');
+});
 
-    const cell = getBoardCellFromEvent(event);
-    if (cell) {
-        placeStone(cell.r, cell.c);
-    }
+canvas.addEventListener('click', (event) => {
+    handleBoardInput(event, 'click');
 });
 
 canvas.addEventListener('pointermove', (event) => {
@@ -793,6 +1203,7 @@ canvas.addEventListener('pointerleave', () => {
 
 elements.undoBtn.addEventListener('click', () => {
     if (history.length === 0) {
+        setTransientStatus('当前没有可悔的落子。');
         return;
     }
 
@@ -808,28 +1219,65 @@ elements.undoBtn.addEventListener('click', () => {
     rebuildBoardFromHistory();
     updateUI();
     render();
+    if (history.length > 0) {
+        saveCurrentGameState();
+    } else {
+        clearAutosave();
+    }
+    setTransientStatus(getUndoStatusMessage(), 1800);
     startTimer();
     if (mode === 'pve' && isAiTurn()) {
         queueAiTurn();
     }
 });
 
-elements.restartBtn.addEventListener('click', init);
+elements.restoreResumeBtn.addEventListener('click', () => {
+    if (!pendingRestoreGame) {
+        return;
+    }
+    applyAutosave(pendingRestoreGame);
+});
+
+elements.restoreDiscardBtn.addEventListener('click', () => {
+    clearAutosave();
+    hideRestoreBanner();
+    setTransientStatus('已放弃上次未完成对局。', 1800);
+    startTimer();
+    if (isAiTurn()) {
+        queueAiTurn();
+    }
+});
+
+elements.restartBtn.addEventListener('click', () => {
+    clearAutosave();
+    hideRestoreBanner();
+    init('restart');
+});
 elements.modeSelect.addEventListener('change', (event) => {
     mode = event.target.value;
-    init();
+    clearAutosave();
+    hideRestoreBanner();
+    init('mode');
 });
 elements.difficultySelect.addEventListener('change', (event) => {
     difficulty = parseInt(event.target.value, 10);
-    init();
+    clearAutosave();
+    hideRestoreBanner();
+    init('difficulty');
 });
 elements.firstPlayerSelect.addEventListener('change', (event) => {
     firstPlayer = event.target.value;
-    init();
+    clearAutosave();
+    hideRestoreBanner();
+    init('firstPlayer');
 });
 elements.renjuToggle.addEventListener('change', () => {
     updateUI();
     render();
+    if (history.length > 0 && !gameOver) {
+        saveCurrentGameState();
+    }
+    setTransientStatus(getRenjuToggleMessage(), 1800);
 });
 
-init();
+init('boot');

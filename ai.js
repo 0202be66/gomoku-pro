@@ -13,40 +13,85 @@ const AI = {
     DIRECTIONS: [[1, 0], [0, 1], [1, 1], [1, -1]],
 
     findBestMove(board, depth, player) {
-        let bestScore = -Infinity;
-        let bestMoves = [];
         const opponent = player === 1 ? 2 : 1;
-        const candidates = this.getCandidates(board, player, opponent);
-        if (candidates.length === 0) {
+        const allCandidates = this.getCandidates(board, player, opponent);
+        if (allCandidates.length === 0) {
             return { r: 7, c: 7 };
         }
 
-        const winningMove = this.findImmediateWinningMove(board, candidates, player);
+        const winningMove = this.findImmediateWinningMove(board, allCandidates, player);
         if (winningMove) {
             return winningMove;
         }
 
-        const blockingMove = this.findImmediateWinningMove(board, candidates, opponent);
+        const blockingMove = this.findImmediateWinningMove(board, allCandidates, opponent);
         if (blockingMove) {
             return blockingMove;
         }
+
+        const candidates = allCandidates.slice(0, this.getCandidateLimit(board, depth, true));
+        const evaluatedMoves = [];
 
         for (const move of candidates) {
             board[move.r][move.c] = player;
             const score = this.minimax(board, depth - 1, -Infinity, Infinity, false, player, opponent);
             board[move.r][move.c] = 0;
-
-            if (score > bestScore) {
-                bestScore = score;
-                bestMoves = [move];
-            } else if (score === bestScore) {
-                bestMoves.push(move);
-            }
+            evaluatedMoves.push({ move, score });
         }
 
-        return bestMoves.length > 0
-            ? bestMoves[Math.floor(Math.random() * bestMoves.length)]
-            : candidates[0];
+        return this.pickEvaluatedMove(evaluatedMoves, depth, candidates[0]);
+    },
+
+    findBestMoveAsync(board, depth, player, onComplete) {
+        const opponent = player === 1 ? 2 : 1;
+        const allCandidates = this.getCandidates(board, player, opponent);
+        if (allCandidates.length === 0) {
+            onComplete({ r: 7, c: 7 });
+            return { cancel() {} };
+        }
+
+        const winningMove = this.findImmediateWinningMove(board, allCandidates, player);
+        if (winningMove) {
+            onComplete(winningMove);
+            return { cancel() {} };
+        }
+
+        const blockingMove = this.findImmediateWinningMove(board, allCandidates, opponent);
+        if (blockingMove) {
+            onComplete(blockingMove);
+            return { cancel() {} };
+        }
+
+        const candidates = allCandidates.slice(0, this.getCandidateLimit(board, depth, true));
+        const task = { cancelled: false };
+        const evaluatedMoves = [];
+        let index = 0;
+
+        const evaluateNext = () => {
+            if (task.cancelled) {
+                return;
+            }
+
+            if (index >= candidates.length) {
+                onComplete(this.pickEvaluatedMove(evaluatedMoves, depth, candidates[0]));
+                return;
+            }
+
+            const move = candidates[index++];
+            board[move.r][move.c] = player;
+            const score = this.minimax(board, depth - 1, -Infinity, Infinity, false, player, opponent);
+            board[move.r][move.c] = 0;
+            evaluatedMoves.push({ move, score });
+
+            setTimeout(evaluateNext, 0);
+        };
+
+        setTimeout(evaluateNext, 0);
+        return {
+            cancel() {
+                task.cancelled = true;
+            }
+        };
     },
 
     findImmediateWinningMove(board, candidates, player) {
@@ -59,6 +104,18 @@ const AI = {
             }
         }
         return null;
+    },
+
+    pickEvaluatedMove(evaluatedMoves, depth, fallbackMove) {
+        if (evaluatedMoves.length === 0) {
+            return fallbackMove;
+        }
+
+        evaluatedMoves.sort((a, b) => b.score - a.score);
+        const profile = this.getDifficultyProfile(depth);
+        const topPool = evaluatedMoves.slice(0, Math.min(profile.pickPool, evaluatedMoves.length));
+        const chosen = topPool[Math.floor(Math.random() * topPool.length)];
+        return chosen ? chosen.move : fallbackMove;
     },
 
     minimax(board, depth, alpha, beta, isMaximizing, player, opponent) {
@@ -75,7 +132,7 @@ const AI = {
 
         const sideToMove = isMaximizing ? player : opponent;
         const rival = sideToMove === player ? opponent : player;
-        const candidates = this.getCandidates(board, sideToMove, rival);
+        const candidates = this.getCandidates(board, sideToMove, rival).slice(0, this.getCandidateLimit(board, depth, false));
         if (candidates.length === 0) {
             return 0;
         }
@@ -237,6 +294,41 @@ const AI = {
             return openEnds === 2 ? this.SCORE.TWO_LIVE : this.SCORE.TWO_DEAD;
         }
         return openEnds === 2 ? this.SCORE.ONE * 2 : this.SCORE.ONE;
+    },
+
+    getStoneCount(board) {
+        let count = 0;
+        for (let r = 0; r < 15; r++) {
+            for (let c = 0; c < 15; c++) {
+                if (board[r][c] !== 0) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    },
+
+    getDifficultyProfile(depth) {
+        const profiles = {
+            1: { rootLimit: 8, branchLimit: 5, pickPool: 4 },
+            2: { rootLimit: 10, branchLimit: 6, pickPool: 3 },
+            3: { rootLimit: 14, branchLimit: 8, pickPool: 2 },
+            4: { rootLimit: 18, branchLimit: 10, pickPool: 1 }
+        };
+        return profiles[depth] || profiles[3];
+    },
+
+    getCandidateLimit(board, depth, isRoot) {
+        const stones = this.getStoneCount(board);
+        const profile = this.getDifficultyProfile(depth);
+
+        if (isRoot) {
+            const earlyBoost = stones < 12 ? 0 : 2;
+            return profile.rootLimit + earlyBoost;
+        }
+
+        const branchBoost = stones < 12 ? 0 : 1;
+        return profile.branchLimit + branchBoost;
     },
 
     getCandidates(board, player = 0, opponent = 0) {
