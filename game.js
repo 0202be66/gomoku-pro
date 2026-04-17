@@ -308,8 +308,10 @@ function isBoardFull() {
 
 function getBoardCellFromEvent(event) {
     const rect = canvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (event.clientX - rect.left) * scaleX;
+    const y = (event.clientY - rect.top) * scaleY;
     const c = Math.round((x - padding) / cellSize);
     const r = Math.round((y - padding) / cellSize);
 
@@ -710,7 +712,7 @@ function stopTimer() {
 }
 
 // 7. 事件
-canvas.addEventListener('click', (event) => {
+canvas.addEventListener('pointerdown', (event) => {
     if (aiThinking || (mode === 'pve' && currentPlayer === 2)) {
         return;
     }
@@ -721,7 +723,10 @@ canvas.addEventListener('click', (event) => {
     }
 });
 
-canvas.addEventListener('mousemove', (event) => {
+canvas.addEventListener('pointermove', (event) => {
+    if (event.pointerType && event.pointerType !== 'mouse') {
+        return;
+    }
     if (gameOver || aiThinking || animatingStone || (mode === 'pve' && currentPlayer === 2)) {
         if (hoveredCell) {
             hoveredCell = null;
@@ -742,7 +747,7 @@ canvas.addEventListener('mousemove', (event) => {
     }
 });
 
-canvas.addEventListener('mouseleave', () => {
+canvas.addEventListener('pointerleave', () => {
     if (!hoveredCell) {
         return;
     }

@@ -14,12 +14,14 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
+    padding: 24px;
+    box-sizing: border-box;
     background: var(--bg-gradient);
     font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
 .app-container {
-    width: 95%;
+    width: min(95%, 1100px);
     max-width: 1100px;
     background: rgba(255, 255, 255, 0.95);
     padding: 30px;
@@ -48,17 +50,20 @@ header {
 main { display: flex; gap: 50px; align-items: flex-start; }
 
 /* 棋盘立体化设计 */
-.board-area { flex: 1; display: flex; flex-direction: column; align-items: center; }
+.board-area { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; }
 .status-bar { 
     font-size: 1.2rem; font-weight: 600; margin-bottom: 20px; 
     color: #444; text-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    text-align: center;
 }
 
 .board-wrapper {
     position: relative;
+    width: min(100%, 604px);
     /* 模拟实木板侧边厚度 */
     background: #c19a6b; 
     padding: 2px;
+    box-sizing: border-box;
     border-radius: 6px;
     box-shadow: 
         0 5px 15px rgba(0,0,0,0.3),
@@ -73,20 +78,25 @@ main { display: flex; gap: 50px; align-items: flex-start; }
         repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(212, 167, 106, 0.1) 41px),
         repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(212, 167, 106, 0.1) 41px);
     display: block;
+    width: 100%;
+    height: auto;
     border: 1px solid rgba(0,0,0,0.1);
     border-radius: 4px;
+    touch-action: none;
 }
 
 #effects { 
     position: absolute; 
     top: 2px; 
     left: 2px; 
+    width: calc(100% - 4px);
+    height: calc(100% - 4px);
     pointer-events: none; 
     background: transparent; /* 确保顶层画布透明 */
 }
 
 /* 侧边栏与控件美化 */
-.sidebar { width: 280px; display: flex; flex-direction: column; gap: 20px; }
+.sidebar { width: 280px; max-width: 100%; display: flex; flex-direction: column; gap: 20px; }
 
 section { 
     background: #ffffff; padding: 20px; border-radius: 16px; 
@@ -123,3 +133,78 @@ h3::before { content: ''; width: 4px; height: 16px; background: var(--accent-col
 .toggle-group { margin-top: 10px; border-top: 1px solid #f0f0f0; padding-top: 15px; }
 .toggle-group label { margin-bottom: 10px; font-size: 0.85rem; color: #666; font-weight: 500; }
 input[type="checkbox"] { accent-color: var(--accent-color); width: 16px; height: 16px; }
+
+.stats-footer {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    font-size: 0.95rem;
+    color: #4b5563;
+}
+
+@media (max-width: 980px) {
+    body {
+        padding: 16px;
+        align-items: flex-start;
+    }
+
+    .app-container {
+        width: 100%;
+        padding: 22px;
+    }
+
+    header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 18px;
+    }
+
+    main {
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    .board-area,
+    .sidebar {
+        width: 100%;
+    }
+
+    .sidebar {
+        gap: 16px;
+    }
+}
+
+@media (max-width: 640px) {
+    body {
+        padding: 10px;
+    }
+
+    .app-container {
+        width: 100%;
+        padding: 16px;
+        border-radius: 18px;
+    }
+
+    .brand h1 {
+        font-size: 1.45rem;
+        letter-spacing: 1px;
+    }
+
+    .status-bar {
+        font-size: 1rem;
+        margin-bottom: 14px;
+    }
+
+    section {
+        padding: 16px;
+    }
+
+    .btn {
+        padding: 12px;
+    }
+
+    .stats-footer {
+        font-size: 0.88rem;
+    }
+}
