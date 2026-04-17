@@ -44,12 +44,14 @@
 
 ---
 
-## 🧾 版本管理
+## 🧾 版本与更新
 
-项目已补充 Git 版本管理说明，便于后续阶段性提交、打标签和回滚：
+项目已补充版本管理与更新记录，便于后续提交、打标签、回滚和查看阶段性变化：
 
-- 查看文档：[VERSIONING.md](VERSIONING.md)
+- 版本规范：[VERSIONING.md](VERSIONING.md)
+- 更新记录：[CHANGELOG.md](CHANGELOG.md)
 - 当前稳定回滚标签：`v1.0.0-stable-20260417`
+- 当前最新提交：`4b1679e` `fix: restore board input and stabilize ai turns`
 
 ---
 
