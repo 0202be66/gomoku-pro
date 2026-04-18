@@ -51,7 +51,10 @@ const elements = {
     autosaveState: document.getElementById('autosave-state'),
     autosaveTime: document.getElementById('autosave-time'),
     autosaveSaveBtn: document.getElementById('autosave-save-btn'),
-    autosaveClearBtn: document.getElementById('autosave-clear-btn')
+    autosaveClearBtn: document.getElementById('autosave-clear-btn'),
+    replayTabBtn: document.getElementById('replay-tab-btn'),
+    sidebarTabs: Array.from(document.querySelectorAll('.sidebar-tab')),
+    sidebarPanels: Array.from(document.querySelectorAll('.sidebar-panel'))
 };
 
 // 游戏常量
@@ -102,6 +105,7 @@ let replaySource = null;
 let replayPlaybackTimer = null;
 let replayAutoplay = false;
 let lastFinishedRecord = null;
+let activeSidebarTab = 'play';
 
 buildBoardLayer();
 
@@ -367,6 +371,45 @@ function formatDuration(totalSeconds) {
     const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
     const secs = (totalSeconds % 60).toString().padStart(2, '0');
     return `${minutes}:${secs}`;
+}
+
+function setActiveSidebarTab(tabId) {
+    const availableTabs = new Set(['play', 'records']);
+    if (replayMode) {
+        availableTabs.add('replay');
+    }
+    activeSidebarTab = availableTabs.has(tabId) ? tabId : 'play';
+    syncSidebarPanels();
+}
+
+function syncSidebarPanels() {
+    const replayTabVisible = replayMode;
+    if (!replayTabVisible && activeSidebarTab === 'replay') {
+        activeSidebarTab = 'play';
+    }
+
+    if (elements.replayTabBtn) {
+        elements.replayTabBtn.classList.toggle('hidden', !replayTabVisible);
+    }
+
+    for (const tab of elements.sidebarTabs) {
+        const isReplayTab = tab.dataset.sidebarTab === 'replay';
+        if (isReplayTab) {
+            tab.classList.toggle('hidden', !replayTabVisible);
+        }
+        const isActive = tab.dataset.sidebarTab === activeSidebarTab;
+        tab.classList.toggle('active', isActive);
+        tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    }
+
+    for (const panel of elements.sidebarPanels) {
+        const panelId = panel.dataset.sidebarPanel;
+        const isReplayPanel = panelId === 'replay';
+        const isActive = panelId === activeSidebarTab && (!isReplayPanel || replayTabVisible);
+        panel.classList.toggle('active', isActive);
+    }
+
+    elements.replayPanel.classList.toggle('hidden', !replayMode);
 }
 
 function saveMatchRecord({ result, winner = null, reason = '', playerWon = null }) {
@@ -663,11 +706,13 @@ function enterReplay(source = null) {
     stopTimer();
     replayMode = true;
     replaySource = effectiveSource;
+    activeSidebarTab = 'replay';
     elements.replayEntry.classList.add('hidden');
     elements.replayPanel.classList.remove('hidden');
     elements.restoreBanner.classList.add('hidden');
     applyReplayPosition(replayHistory.length);
     elements.status.innerText = '已进入复盘模式。';
+    syncSidebarPanels();
 }
 
 function exitReplay() {
@@ -675,6 +720,7 @@ function exitReplay() {
     replayMode = false;
     replayIndex = 0;
     replaySource = null;
+    activeSidebarTab = 'play';
     elements.replayPanel.classList.add('hidden');
     elements.replayEntry.classList.add('hidden');
     rebuildBoardFromHistory();
@@ -774,6 +820,7 @@ function init(reason = 'boot') {
     replayMode = false;
     replayIndex = 0;
     replaySource = null;
+    activeSidebarTab = activeSidebarTab === 'records' ? 'records' : 'play';
     board = Array.from({ length: size }, () => Array(size).fill(0));
     history = [];
     currentPlayer = 1;
@@ -1447,9 +1494,7 @@ function updateUI() {
     renderMatchRecordSummary();
     updateStatusText();
     updateAutosavePanel();
-    if (!replayMode) {
-        elements.replayPanel.classList.add('hidden');
-    }
+    syncSidebarPanels();
 }
 
 function startTimer() {
@@ -1561,6 +1606,11 @@ elements.autosaveSaveBtn.addEventListener('click', handleManualSave);
 elements.autosaveClearBtn.addEventListener('click', handleClearAutosave);
 elements.enterReplayBtn.addEventListener('click', () => enterReplay());
 elements.recordReplayBtn.addEventListener('click', () => enterReplay(matchRecords[0] || null));
+elements.sidebarTabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+        setActiveSidebarTab(tab.dataset.sidebarTab || 'play');
+    });
+});
 elements.recordHistoryList.addEventListener('click', (event) => {
     const target = event.target;
     if (!(target instanceof HTMLElement)) {

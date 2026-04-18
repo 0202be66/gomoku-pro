@@ -48,117 +48,141 @@
             </div>
             
             <aside class="sidebar">
-                <section class="config-panel">
-                    <h3>核心配置</h3>
-                    <div class="input-group">
-                        <label>对战模式</label>
-                        <select id="mode-select">
-                            <option value="pvp">双人对战</option>
-                            <option value="pve" selected>人机挑战 (AI)</option>
-                        </select>
+                <section class="action-panel quick-panel">
+                    <div class="quick-panel-head">
+                        <div>
+                            <span class="record-label">快捷操作</span>
+                        </div>
+                        <div class="stats-footer">
+                            <span>步数: <b id="move-count">0</b></span>
+                            <span>用时: <b id="timer">00:00</b></span>
+                        </div>
                     </div>
-                    <div class="input-group">
-                        <label>AI 难度 (Minimax 深度)</label>
-                        <select id="difficulty-select">
-                            <option value="1">入门 (1步预测)</option>
-                            <option value="2">普通 (2步预测)</option>
-                            <option value="3" selected>专家 (3步预测)</option>
-                            <option value="4">棋魂 (4步预测-慎选)</option>
-                        </select>
-                        <div id="difficulty-hint" class="input-hint">中等搜索宽度，兼顾进攻与防守。</div>
-                    </div>
-                    <div class="input-group">
-                        <label>先手方</label>
-                        <select id="first-player-select">
-                            <option value="human" selected>玩家先手</option>
-                            <option value="ai">AI 先手</option>
-                        </select>
-                    </div>
-                    <div class="input-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="renju-toggle"> 开启连珠禁手 (黑棋限制)
-                        </label>
+                    <div class="quick-actions">
+                        <button id="undo-btn" class="btn secondary">悔棋</button>
+                        <button id="restart-btn" class="btn primary">重开新局</button>
                     </div>
                 </section>
 
-                <section class="power-panel">
-                    <h3>棋力评估</h3>
-                    <div class="power-meter">
-                        <div class="meter-bar"><div id="power-fill" style="width: 20%"></div></div>
-                        <div class="power-label">等级: <span id="rank-name">棋坛新手</span></div>
-                        <div class="power-value">ELO: <span id="elo-score">1000</span></div>
-                    </div>
-                </section>
+                <div class="sidebar-tabs" role="tablist" aria-label="功能分区">
+                    <button type="button" class="sidebar-tab active" data-sidebar-tab="play" aria-selected="true">对局</button>
+                    <button type="button" class="sidebar-tab" data-sidebar-tab="records" aria-selected="false">记录</button>
+                    <button type="button" id="replay-tab-btn" class="sidebar-tab hidden" data-sidebar-tab="replay" aria-selected="false">复盘</button>
+                </div>
 
-                <section class="record-panel">
-                    <h3>对局记录</h3>
-                    <div class="record-grid">
-                        <div class="record-card">
-                            <span class="record-label">总局数</span>
-                            <strong id="record-total">0</strong>
-                        </div>
-                        <div class="record-card">
-                            <span class="record-label">玩家胜率</span>
-                            <strong id="record-win-rate">--</strong>
-                        </div>
-                    </div>
-                    <div class="latest-record">
-                        <span class="record-label">最近一局</span>
-                        <div id="record-latest">暂无记录</div>
-                    </div>
-                    <button id="record-replay-btn" class="btn secondary compact">复盘最近一局</button>
-                    <div class="record-history">
-                        <span class="record-label">最近 20 局</span>
-                        <div id="record-history-list" class="record-history-list"></div>
-                    </div>
-                </section>
+                <div class="sidebar-panels">
+                    <div class="sidebar-panel active" data-sidebar-panel="play">
+                        <section class="config-panel">
+                            <h3>核心配置</h3>
+                            <div class="input-group">
+                                <label>对战模式</label>
+                                <select id="mode-select">
+                                    <option value="pvp">双人对战</option>
+                                    <option value="pve" selected>人机挑战 (AI)</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>AI 难度 (Minimax 深度)</label>
+                                <select id="difficulty-select">
+                                    <option value="1">入门 (1步预测)</option>
+                                    <option value="2">普通 (2步预测)</option>
+                                    <option value="3" selected>专家 (3步预测)</option>
+                                    <option value="4">棋魂 (4步预测-慎选)</option>
+                                </select>
+                                <div id="difficulty-hint" class="input-hint">中等搜索宽度，兼顾进攻与防守。</div>
+                            </div>
+                            <div class="input-group">
+                                <label>先手方</label>
+                                <select id="first-player-select">
+                                    <option value="human" selected>玩家先手</option>
+                                    <option value="ai">AI 先手</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="renju-toggle"> 开启连珠禁手 (黑棋限制)
+                                </label>
+                            </div>
+                        </section>
 
-                <section class="action-panel">
-                    <button id="undo-btn" class="btn secondary">悔棋</button>
-                    <button id="restart-btn" class="btn primary">重开新局</button>
-                    <div class="autosave-panel">
-                        <div class="autosave-head">
-                            <span class="record-label">自动存档</span>
-                            <strong id="autosave-state">当前无未结束存档</strong>
-                        </div>
-                        <div id="autosave-time" class="autosave-time">上次保存：未保存</div>
-                        <div class="autosave-actions">
-                            <button id="autosave-save-btn" class="btn secondary compact">立即保存</button>
-                            <button id="autosave-clear-btn" class="btn secondary compact">清除存档</button>
-                        </div>
-                    </div>
-                    <div class="toggle-group">
-                        <label><input type="checkbox" id="sound-toggle" checked> 启用落子音效</label>
-                        <label><input type="checkbox" id="particle-toggle" checked> 启用获胜特效</label>
-                    </div>
-                </section>
+                        <section class="power-panel">
+                            <h3>棋力评估</h3>
+                            <div class="power-meter">
+                                <div class="meter-bar"><div id="power-fill" style="width: 20%"></div></div>
+                                <div class="power-label">等级: <span id="rank-name">棋坛新手</span></div>
+                                <div class="power-value">ELO: <span id="elo-score">1000</span></div>
+                            </div>
+                        </section>
 
-                <section id="replay-panel" class="replay-panel hidden">
-                    <h3>复盘控制</h3>
-                    <div class="replay-meta">
-                        <div class="record-card">
-                            <span class="record-label">当前步</span>
-                            <strong id="replay-step">0 / 0</strong>
-                        </div>
-                        <div class="record-card">
-                            <span class="record-label">当前查看</span>
-                            <strong id="replay-turn">开局</strong>
-                        </div>
+                        <section class="support-panel">
+                            <h3>辅助功能</h3>
+                            <div class="autosave-panel">
+                                <div class="autosave-head">
+                                    <span class="record-label">自动存档</span>
+                                    <strong id="autosave-state">当前无未结束存档</strong>
+                                </div>
+                                <div id="autosave-time" class="autosave-time">上次保存：未保存</div>
+                                <div class="autosave-actions">
+                                    <button id="autosave-save-btn" class="btn secondary compact">立即保存</button>
+                                    <button id="autosave-clear-btn" class="btn secondary compact">清除存档</button>
+                                </div>
+                            </div>
+                            <div class="toggle-group">
+                                <label><input type="checkbox" id="sound-toggle" checked> 启用落子音效</label>
+                                <label><input type="checkbox" id="particle-toggle" checked> 启用获胜特效</label>
+                            </div>
+                        </section>
                     </div>
-                    <div id="replay-detail" class="latest-record replay-detail">尚未进入复盘。</div>
-                    <div class="replay-actions">
-                        <button id="replay-start-btn" class="btn secondary compact">开局</button>
-                        <button id="replay-prev-btn" class="btn secondary compact">上一步</button>
-                        <button id="replay-next-btn" class="btn secondary compact">下一步</button>
-                        <button id="replay-end-btn" class="btn secondary compact">终局</button>
-                        <button id="replay-play-btn" class="btn secondary compact">自动播放</button>
-                    </div>
-                    <button id="exit-replay-btn" class="btn primary">退出复盘</button>
-                </section>
 
-                <div class="stats-footer">
-                    <span>步数: <b id="move-count">0</b></span>
-                    <span>用时: <b id="timer">00:00</b></span>
+                    <div class="sidebar-panel" data-sidebar-panel="records">
+                        <section class="record-panel">
+                            <h3>对局记录</h3>
+                            <div class="record-grid">
+                                <div class="record-card">
+                                    <span class="record-label">总局数</span>
+                                    <strong id="record-total">0</strong>
+                                </div>
+                                <div class="record-card">
+                                    <span class="record-label">玩家胜率</span>
+                                    <strong id="record-win-rate">--</strong>
+                                </div>
+                            </div>
+                            <div class="latest-record">
+                                <span class="record-label">最近一局</span>
+                                <div id="record-latest">暂无记录</div>
+                            </div>
+                            <button id="record-replay-btn" class="btn secondary compact">复盘最近一局</button>
+                            <div class="record-history">
+                                <span class="record-label">最近 20 局</span>
+                                <div id="record-history-list" class="record-history-list"></div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <div class="sidebar-panel" data-sidebar-panel="replay">
+                        <section id="replay-panel" class="replay-panel hidden">
+                            <h3>复盘控制</h3>
+                            <div class="replay-meta">
+                                <div class="record-card">
+                                    <span class="record-label">当前步</span>
+                                    <strong id="replay-step">0 / 0</strong>
+                                </div>
+                                <div class="record-card">
+                                    <span class="record-label">当前查看</span>
+                                    <strong id="replay-turn">开局</strong>
+                                </div>
+                            </div>
+                            <div id="replay-detail" class="latest-record replay-detail">尚未进入复盘。</div>
+                            <div class="replay-actions">
+                                <button id="replay-start-btn" class="btn secondary compact">开局</button>
+                                <button id="replay-prev-btn" class="btn secondary compact">上一步</button>
+                                <button id="replay-next-btn" class="btn secondary compact">下一步</button>
+                                <button id="replay-end-btn" class="btn secondary compact">终局</button>
+                                <button id="replay-play-btn" class="btn secondary compact">自动播放</button>
+                            </div>
+                            <button id="exit-replay-btn" class="btn primary">退出复盘</button>
+                        </section>
+                    </div>
                 </div>
             </aside>
         </main>
